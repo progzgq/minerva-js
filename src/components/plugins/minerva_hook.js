@@ -20,10 +20,11 @@ window.addEventListener("message", event => {
         const pattern = eventData.pattern;
         const isEquals = eventData.isEquals;
         const fieldName = eventData.fieldName;
+        const firstOnly = eventData.firstOnly;
         const isNeedExpansion = eventData.isNeedExpansion;
-        _search(fieldName, pattern, isEquals, isNeedExpansion);
+        _search(fieldName, firstOnly, pattern, isEquals, isNeedExpansion);
         alreadyProcessMessageIdSet.add(messageId);
-        _searchParentAndChildren(messageId, fieldName, pattern, isEquals, isNeedExpansion);
+        _searchParentAndChildren(messageId, fieldName, firstOnly, pattern, isEquals, isNeedExpansion);
     }
 
 });
@@ -31,6 +32,7 @@ window.addEventListener("message", event => {
 if (!window.minerva_hook) {
     window.minerva_hook = {
         scope_db: {},
+        scope_seqs: [],
         scope_stack: [],
         beforeFunction: function (funcName, f, f_arguments, ...params) {
             if (!f) {
@@ -38,25 +40,43 @@ if (!window.minerva_hook) {
             }
             let scope_id = `${funcName}_${new Date().getTime()}_${Math.random()}`;
             f.minerva_scope_id = scope_id;
-            this.scope_db[scope_id] = { f: f, codeLocation: getCodeLocation(), scope_id: scope_id, params: params, f_arguments: f_arguments };
-            this.scope_stack.push(scope_id);
+            var cScope = {
+                f: f,
+                codeLocation: getCodeLocation(),
+                scope_id: scope_id,
+                params: params,
+                f_arguments: f_arguments,
+                children: [],
+                parent: [],
+            };
+            this.scope_db[scope_id] = cScope;
+            this.scope_seqs.push(scope_id);
+            var lastScope = this.scope_stack.length > 0 ? this.scope_stack[this.scope_stack.length - 1] : null;
+            if (lastScope) {
+                lastScope.children.push(cScope);
+                cScope.parent.push(lastScope);
+            }
+            this.scope_stack.push(cScope);
+            return scope_id;
         },
-        afterFunction: function (funcName, f, scope) {
+        afterFunction: function (funcName, f, scope, minerva_scope_id) {
             if (!f) {
                 return;
             }
-            let f_scope = this.scope_db[f.minerva_scope_id];
+            let f_scope = this.scope_db[minerva_scope_id];
             if (!f_scope) { return; }
             f_scope.scope = {};
             Object.assign(f_scope.scope, scope);
+            this.scope_stack.pop();
         },
-        search: function (pattern, isEquals = false, isNeedExpansion = false) {
+        
+        search: function (pattern, firstOnly = true, isEquals = false, isNeedExpansion = false) {
             let fieldName = '';
-            _search(fieldName, pattern, isEquals, isNeedExpansion);
+            _search(fieldName, firstOnly, pattern, isEquals, isNeedExpansion);
             const messageId = new Date().getTime();
             alreadyProcessMessageIdSet.add(messageId);
             // 然后递归搜索父页面和子页面
-            _searchParentAndChildren(messageId, fieldName, pattern, isEquals, isNeedExpansion);
+            _searchParentAndChildren(messageId, fieldName, firstOnly, pattern, isEquals, isNeedExpansion);
         }
     }
 }
@@ -73,12 +93,13 @@ function getCodeLocation() {
     return callstack.shift();
 }
 
-function _searchParentAndChildren(messageId, fieldName, pattern, isEquals, isNeedExpansion) {
+function _searchParentAndChildren(messageId, fieldName, firstOnly, pattern, isEquals, isNeedExpansion) {
     const searchMessage = {
         "domain": messageDomain,
         "type": messageTypeSearch,
         "fieldName": fieldName,
         "messageId": messageId,
+        firstOnly,
         pattern,
         isEquals,
         isNeedExpansion
@@ -98,10 +119,10 @@ function _searchParentAndChildren(messageId, fieldName, pattern, isEquals, isNee
     }
 }
 
-function _search(filedName, pattern, isEquals, isNeedExpansion) {
+function _search(filedName, firstOnly, pattern, isEquals, isNeedExpansion) {
     const result = [];
     const expansionValues = isNeedExpansion ? expansionS(pattern) : [pattern];
-    for (let sid of minerva_hook.scope_stack) {
+    for (let sid of minerva_hook.scope_seqs) {
         let s = minerva_hook.scope_db[sid].scope;
         if (!s) {
             continue;
@@ -133,7 +154,8 @@ function _search(filedName, pattern, isEquals, isNeedExpansion) {
                 continue;
             }
             console.log(minerva_hook.scope_db[sid]);
-            return s;
+            console.log(minerva_hook.scope_db[sid]['codeLocation']);
+            if (firstOnly) return;
         }
     }
 }

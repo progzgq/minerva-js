@@ -3,11 +3,12 @@ const shell = require("shelljs");
 const crypto = require("crypto");
 const cheerio = require("cheerio");
 
-const {loadPluginsAsStringWithCache} = require("./plugins-manager");
-import {processJs} from "../pass/pass-manager";
+const { loadPluginsAsStringWithCache } = require("./plugins-manager");
+import { processJs } from "../pass/pass-manager";
 
 // 注入Hook成功的文件暂存到哪个目录下，因为注入实在是太慢了，落盘以应对频繁重启
 const injectSuccessJsFileCacheDirectory = "./js-file-cache";
+const injectSuccessJsFileCacheOriginDirectory = "./js-file-cache-origin";
 const injectSuccessJsFileCacheMetaFile = `${injectSuccessJsFileCacheDirectory}/meta.jsonl`
 
 // {
@@ -21,6 +22,7 @@ const disableCache = false;
 
 (function initInjectSuccessJsFileCache() {
     ensureDirectoryExists(injectSuccessJsFileCacheDirectory);
+    ensureDirectoryExists(injectSuccessJsFileCacheOriginDirectory);
     if (!exists(injectSuccessJsFileCacheMetaFile)) {
         return;
     }
@@ -105,7 +107,7 @@ function processHtmlResponse(requestDetail, responseDetail) {
 
         // script的内容
         let jsCode = "";
-        for(let child of script.children) {
+        for (let child of script.children) {
             jsCode += child.data;
         }
         if (!jsCode) {
@@ -175,15 +177,19 @@ function processFromCache(responseDetail, url, body) {
 }
 
 function processRealtime(responseDetail, url, body) {
-    const newJsCode = processJs(body);
+    let newJsCode = processJs(body);
+    newJsCode = newJsCode.replace(/"use strict";/g, '');
     const md5 = crypto.createHash("md5");
-    const cacheFilePath = injectSuccessJsFileCacheDirectory + "/" + md5.update(url).digest("hex") + ".js";
+    const md5Digest = md5.update(url).digest("hex");
+    const cacheFilePath = injectSuccessJsFileCacheDirectory + "/" + md5Digest + ".js";
+    const originFilePath = injectSuccessJsFileCacheOriginDirectory + "/" + md5Digest + ".js";
     const meta = {
         url,
         filepath: cacheFilePath,
         cacheTime: new Date().getTime()
     };
     if (!disableCache) {
+        fs.writeFileSync(originFilePath, body);
         fs.writeFileSync(cacheFilePath, newJsCode);
         fs.appendFileSync(injectSuccessJsFileCacheMetaFile, JSON.stringify(meta) + "\n");
     }

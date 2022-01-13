@@ -17,13 +17,21 @@ function rewriteFunctionExpressions(program: ESTree.Program | ESTree.File): void
   let replaceTotal = 0;
   let funTotal = 0;
   var rewriteFunctionVisitor = {
+    // FunctionDeclaration(path){
+    //   let funcId = functionIdGenerator.generateId();
+    //   let nameSuffix = path.node.id
+    //     ? "_" + path.node.id.name
+    //     : "";
+    //   let funcName = `_mmfunc${funcId}${nameSuffix}`;
+      
+    // },
     FunctionExpression(path) {
       funTotal += 1;
       let funcId = functionIdGenerator.generateId();
       let nameSuffix = path.node.id
         ? "_" + path.node.id.name
         : "";
-      let funcName = `$$func${funcId}${nameSuffix}`;
+      let funcName = `_mmfunc${funcId}${nameSuffix}`;
       // if (path.toString().indexOf('WRbNW7BcVSouvHW') > 1) {
       //   console.log(`funcName:${funcName}`);
       //   debugger;

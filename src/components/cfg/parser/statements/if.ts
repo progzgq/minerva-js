@@ -5,6 +5,7 @@ import { parseStatement } from "./statement";
 
 import * as ESTree from "../../estree";
 import { Completion, FlowNode, ParsingContext } from "../../flow";
+import { parseExpression } from "./expression";
 
 export { parseIfStatement };
 
@@ -31,6 +32,11 @@ function parseSimpleIfStatement(
   currentNode: FlowNode,
   context: ParsingContext
 ): Completion {
+  let testNode = parseExpression(
+    ifStatement.test,
+    currentNode,
+    context
+  );
   let negatedTest = negateTruthiness(ifStatement.test);
 
   let thenLabel = stringify(ifStatement.test);
@@ -38,7 +44,7 @@ function parseSimpleIfStatement(
 
   let thenNode = context
     .createNode()
-    .appendConditionallyTo(currentNode, thenLabel, ifStatement.test);
+    .appendConditionallyTo(testNode, thenLabel, ifStatement.test);
 
   let thenBranchCompletion = parseStatement(
     ifStatement.consequent,
@@ -48,7 +54,7 @@ function parseSimpleIfStatement(
 
   let finalNode = context
     .createNode()
-    .appendConditionallyTo(currentNode, elseLabel, negatedTest);
+    .appendConditionallyTo(testNode, elseLabel, negatedTest);
 
   if (thenBranchCompletion.normal) {
     finalNode.appendEpsilonEdgeTo(thenBranchCompletion.normal);
@@ -64,9 +70,14 @@ function parseIfElseStatement(
 ): Completion {
   // Then branch
   let thenLabel = stringify(ifStatement.test);
+  let testNode = parseExpression(
+    ifStatement.test,
+    currentNode,
+    context
+  );
   let thenNode = context
     .createNode()
-    .appendConditionallyTo(currentNode, thenLabel, ifStatement.test);
+    .appendConditionallyTo(testNode, thenLabel, ifStatement.test);
   let thenBranchCompletion = parseStatement(
     ifStatement.consequent,
     thenNode,
@@ -78,7 +89,7 @@ function parseIfElseStatement(
   let elseLabel = stringify(negatedTest);
   let elseNode = context
     .createNode()
-    .appendConditionallyTo(currentNode, elseLabel, negatedTest);
+    .appendConditionallyTo(testNode, elseLabel, negatedTest);
   let elseBranchCompletion = parseStatement(
     ifStatement.alternate,
     elseNode,

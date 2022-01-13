@@ -5,13 +5,17 @@ import types = require("@babel/types");
 import generator = require("@babel/generator");
 import { Inject } from "./inject-hook";
 import { DecryptString } from "./decrypt-string";
+import { CfgBuilder } from "./cfg-builder";
+import { CopyPropagation } from "./copy-propagation";
 
 export interface Pass {
     passAst(ast): void
 }
 
 const passes = [
-    // new DecryptString(),
+    new CfgBuilder(),
+    new CopyPropagation(),
+    new DecryptString(),
     new Inject(),
 ]
 

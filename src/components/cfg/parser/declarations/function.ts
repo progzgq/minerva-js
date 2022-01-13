@@ -21,6 +21,7 @@ import {
   NodeType,
   ParsingContext
 } from "../../flow";
+import { DefUseNode } from "../../util/defuse";
 
 export { parseFunctionDeclaration };
 
@@ -64,6 +65,11 @@ function parseFunctionDeclaration(
     entryNode,
     context
   );
+  for (let statement of functionDeclaration.body.body) {
+    if (ESTree.isFunctionDeclaration(statement)) {
+      entryNode.defs.add(DefUseNode.create(statement.id, null));
+    }
+  }
 
   let completion = parseBlockStatement(
     functionDeclaration.body,
@@ -109,6 +115,9 @@ function explicitlyAssignParameterValues(
   let specialParamsArray = createIdentifier("$$params");
 
   functionDeclaration.params.forEach((param, index) => {
+    if (ESTree.isIdentifier(param)) {
+      currentNode.defs.add(DefUseNode.create(param, null));
+    }
     // let indexedParamAccess: ESTree.MemberExpression = {
     //   type: ESTree.NodeType.MemberExpression,
     //   computed: true,

@@ -1,7 +1,7 @@
 import { Pass } from "./pass-manager";
 
-const babel = require("@babel/core");
-const types = require("@babel/types");
+import * as babel from "@babel/core";
+import * as types from "@babel/types";
 const generator = require("@babel/generator");
 
 const hookFunctionBeforeName = "minerva_hook.beforeFunction";
@@ -31,46 +31,53 @@ function injectFunction(path) {
         return;
     }
     const funcName = node.id ? node.id.name : "null";
-    let hookFunctionArguments = [types.stringLiteral(funcName), types.thisExpression(), types.identifier('arguments')];
+    const funcObj = types.memberExpression(types.identifier('arguments'), types.identifier('callee'));
+    let hookFunctionArguments = [types.stringLiteral(funcName), funcObj, types.identifier('arguments')];
     if (node.params?.length > 0) {
         hookFunctionArguments.concat(node.params);
     }
-    const hookFunctionBefore = types.callExpression(types.identifier(hookFunctionBeforeName), hookFunctionArguments);
-    node.body.body.unshift(types.expressionStatement(hookFunctionBefore));
+    const hookFunctionBefore = types.variableDeclaration("var", [
+        types.variableDeclarator(types.identifier('minerva_scope_id'),
+            types.callExpression(types.identifier(hookFunctionBeforeName), hookFunctionArguments))
+    ]);//;
+    node.body.body.unshift(hookFunctionBefore);
     let lastStateMent = node.body.body.pop();
-
+    let properties = [];
     if (lastStateMent.type === 'ReturnStatement') {
         let ret_val_name = "_minerva_ret";
-        let minerva_exp = types.assignmentExpression("=",
+        let minerva_exp = types.variableDeclaration("var", [types.variableDeclarator(
             types.identifier(ret_val_name),
             lastStateMent.argument
-        )
-        node.body.body.push(types.expressionStatement(minerva_exp));
+        )])
+        node.body.body.push(minerva_exp);
         lastStateMent = types.returnStatement(types.identifier(ret_val_name));
+        properties.push(types.objectProperty(types.identifier(ret_val_name), types.identifier(ret_val_name)));
     } else {
         node.body.body.push(lastStateMent);
         lastStateMent = null;
     }
-    let properties = [];
-    for (let exp of node.body.body) {
-        let leftName = null;
-        if (exp.type === 'VariableDeclaration') {
-            for (let vd of exp.declarations) {
-                leftName = vd.id.name;
-                if (leftName) {
-                    properties.push(types.objectProperty(types.identifier(leftName), types.identifier(leftName)));
-                }
-            }
-        }
-        else if (exp.expression && exp.expression.type === 'AssignmentExpression') {
-            leftName = exp.expression.left.name;
-            if (leftName) {
-                properties.push(types.objectProperty(types.identifier(leftName), types.identifier(leftName)));
-            }
-        }
-    }
+    // for (let exp of node.body.body) {
+    //     let leftName = null;
+    //     if (exp.type === 'VariableDeclaration') {
+    //         for (let vd of exp.declarations) {
+    //             leftName = vd.id.name;
+    //             if (leftName) {
+    //                 properties.push(types.objectProperty(types.identifier(leftName), types.identifier(leftName)));
+    //             }
+    //         }
+    //     }
+    //     else if (exp.expression && exp.expression.type === 'AssignmentExpression') {
+    //         leftName = exp.expression.left.name;
+    //         if (leftName) {
+    //             properties.push(types.objectProperty(types.identifier(leftName), types.identifier(leftName)));
+    //         }
+    //     }
+    // }
+    Object.keys(path.scope.bindings).forEach(key => {
+        properties.push(types.objectProperty(types.identifier(key), types.identifier(key)));
+    })
     let vals = types.objectExpression(properties);
-    let hookFunctionAfterArguments = [types.stringLiteral(funcName), types.thisExpression(), vals];
+    let hookFunctionAfterArguments = [types.stringLiteral(funcName), funcObj, vals, types.identifier('minerva_scope_id')];
     const hookFunctionAfter = types.callExpression(types.identifier(hookFunctionAfterName), hookFunctionAfterArguments);
     node.body.body.push(types.expressionStatement(hookFunctionAfter));
     if (lastStateMent) {
