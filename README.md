@@ -1,18 +1,26 @@
 ## Minerva-js介绍
-受这个项目启发[ast-hook-for-js-RE](https://github.com/CC11001100/ast-hook-for-js-RE)。
 主要目标提高js逆向效率
-### features
+
+## 功能点
 1.快速定位加密字段生成函数
+
 2.代码反混淆(持续增加中...)
+
 3.TODO:目标函数二次优化(可继续逆向逻辑，或直接丢进VM执行)
 
 ## 使用介绍
 ### 1.项目启动
-1.项目根目录执行：
+1).项目根目录执行：
+```
 npm install
 npm run minerva
-2.把浏览器代理指向localhost:10086
-3.浏览器打开目标网站，开始分析
+```
+
+注: 第一次运行需要装一下AnyProxy证书，详见:https://github.com/alibaba/anyproxy/wiki/v3.x--HTTPS%E7%9B%B8%E5%85%B3%E6%95%99%E7%A8%8B
+
+2).把浏览器代理指向localhost:10086 (可以用chrome插件：SwitchyOmega)
+
+3).浏览器打开目标网站，开始分析
 
 ### 2.快速定位加密字段生成函数
 #### 使用方法:
