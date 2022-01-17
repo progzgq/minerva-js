@@ -9,6 +9,8 @@ import {
   FlowNode,
   ParsingContext
 } from "../../flow";
+import { parseStatement } from "./statement";
+import { parseExpression } from "./expression";
 
 export { parseReturnStatement };
 
@@ -22,12 +24,16 @@ function parseReturnStatement(
     : "undefined";
   let returnLabel = `return ${argument}`;
 
-  let finalizerCompletion = runFinalizersBeforeReturn(currentNode, context);
+  let returnNode = returnStatement.argument ?
+    parseExpression(returnStatement.argument, currentNode, context)
+    : context.createNode().appendEpsilonEdgeTo(currentNode);
+
+  let finalizerCompletion = runFinalizersBeforeReturn(returnNode, context);
 
   if (!finalizerCompletion.normal) {
     return finalizerCompletion;
   }
-
+  if (finalizerCompletion.normal.id === 1706) debugger;
   context.currentFlowGraph.successExit.appendTo(
     finalizerCompletion.normal,
     returnLabel,
@@ -35,7 +41,7 @@ function parseReturnStatement(
     EdgeType.AbruptCompletion
   );
 
-  return { return: true };
+  return { return: true, data: returnNode };
 }
 
 function runFinalizersBeforeReturn(

@@ -86,6 +86,7 @@ function createParsingContext(): ParsingContext {
 
     createNode(type = NodeType.Normal) {
       let id = nodeIdGenerator.generateId();
+      // if(id===12017) debugger;
       return new FlowNode(id, type);
     },
 

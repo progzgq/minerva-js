@@ -1,5 +1,5 @@
 import { Identifier } from '@babel/types';
-import { globalVal } from '../../core/broswer';
+import { globalJsVal } from '../../core/constants';
 import * as ESTree from '../estree'
 export class DefUseNode {
     constructor(public name: string, public id: number, public brother: Identifier, public ambiguity: boolean) { }
@@ -12,7 +12,7 @@ export class DefUseNode {
 }
 
 function appendUses(uses: Set<DefUseNode>, defUseNode: DefUseNode) {
-    if (globalVal.has(defUseNode.name)) {
+    if (globalJsVal.has(defUseNode.name)) {
         //js和浏览器自带属性，简单起见，直接丢弃
         return;
     }
@@ -31,6 +31,10 @@ export function get_def_uses(node: ESTree.Node, ambiguity = false): [Set<DefUseN
         uses = new Set([...uses, ...nuses]);
     }
     switch (node.type) {
+        case "Identifier": {
+            appendUses(uses, DefUseNode.create(node, null));
+            break;
+        }
         case "VariableDeclaration": {
             for (let variableDeclarator of node.declarations) {
                 appendDefuses(variableDeclarator, ambiguity);

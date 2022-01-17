@@ -3,9 +3,6 @@ import { FlowProgram, ParserOptions } from "./flow";
 import * as Parser from "./parser/parser";
 
 export { parse };
-export { exportAsDot } from "./exporters/dot";
-export { exportAsJson } from "./exporters/json";
-export { exportAsObject } from "./exporters/object";
 export * from "./flow";
 
 function parse(program: ESTree.Program, options?: ParserOptions): ESTree.Program {

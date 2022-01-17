@@ -56,12 +56,17 @@ function parseTryStatement(
   context.enclosingStatements.push(enclosingTryStatement);
 
   enclosingTryStatement.isCurrentlyInTryBlock = true;
+  let tryBlockEntry = context.createNode().appendEpsilonEdgeTo(currentNode);
   let tryBlockCompletion = parseBlockStatement(
     tryStatement.block,
-    currentNode,
+    tryBlockEntry,
     context
   );
   enclosingTryStatement.isCurrentlyInTryBlock = false;
+
+  if (handlerBodyEntry) {
+    handlerBodyEntry.appendEpsilonEdgeTo(tryBlockEntry);//TODO 异常节点的前驱可能是tyeBlock内所有节点？
+  }
 
   let handlerBodyCompletion = handler
     ? parseBlockStatement(handler.body, handlerBodyEntry, context)
@@ -101,6 +106,12 @@ function parseTryCatch(
 
   if (handlerBodyCompletion.normal) {
     finalNode.appendEpsilonEdgeTo(handlerBodyCompletion.normal);
+  } else if (handlerBodyCompletion.return) {
+    //避免出现没有前驱的节点
+    finalNode.appendEpsilonEdgeTo(handlerBodyCompletion.data);
+  } else if (handlerBodyCompletion.throw) {
+    //避免出现没有前驱的节点
+    finalNode.appendEpsilonEdgeTo(handlerBodyCompletion.data);
   }
 
   return { normal: finalNode };

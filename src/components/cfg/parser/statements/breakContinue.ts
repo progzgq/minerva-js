@@ -20,8 +20,10 @@ function parseBreakStatement(
     context,
     breakStatement.label
   );
+  let breakNode = context.createNode().appendEpsilonEdgeTo(currentNode);
+  breakNode.data = breakStatement;
   let finalizerCompletion = runFinalizersBeforeBreakOrContinue(
-    currentNode,
+    breakNode,
     context,
     enclosingStatement
   );
@@ -37,7 +39,7 @@ function parseBreakStatement(
     EdgeType.AbruptCompletion
   );
 
-  return { break: true };
+  return { break: true, data: breakNode };
 }
 
 function parseContinueStatement(
@@ -52,14 +54,15 @@ function parseContinueStatement(
 
   if (enclosingStatement.continueTarget === null) {
     throw new Error(
-      `Illegal continue target detected: "${
-        continueStatement.label
+      `Illegal continue target detected: "${continueStatement.label
       }" does not label an enclosing iteration statement`
     );
   }
+  let continueNode = context.createNode().appendEpsilonEdgeTo(currentNode);
+  continueNode.data = continueStatement;
 
   let finalizerCompletion = runFinalizersBeforeBreakOrContinue(
-    currentNode,
+    continueNode,
     context,
     enclosingStatement
   );
@@ -75,7 +78,7 @@ function parseContinueStatement(
     EdgeType.AbruptCompletion
   );
 
-  return { continue: true };
+  return { continue: true, data: continueNode };
 }
 
 function findLabeledEnclosingStatement(

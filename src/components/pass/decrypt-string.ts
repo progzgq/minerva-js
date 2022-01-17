@@ -25,7 +25,7 @@ export class DecryptString implements Pass {
                         console.log(`find funcName fail, callee.type:${property.callee.type}`);
                         return;
                     }
-                    // if (funcName === '_e') {
+                    // if (funcName === '_mmfunc2300_e') {
                     //     //$$func2131_e
                     //     //$$func2338_e
                     //     //待解决： O

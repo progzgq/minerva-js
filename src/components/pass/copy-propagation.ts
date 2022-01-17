@@ -17,16 +17,32 @@ interface CPResult {
 
 interface IdSeq {
     seqs: Record<number, number>,
+    sorted: Record<number, FlowNode>,
     put(number): void,
-    get(number): number
+    get(number): number,
+    getNode(number): FlowNode,
+    size(): number,
+}
+
+interface WSet {
+    data: Set<number>,
+    entry: FlowNode[],
+    copy(): WSet,
 }
 
 function createIdSeq(): IdSeq {
     let seqGenerate = IdGenerator.create();
     return {
         seqs: {},
-        put(id) { this.seqs[id] = seqGenerate.generateId() },
-        get(id) { return this.seqs[id] }
+        sorted: {},
+        put(node: FlowNode) {
+            let seq = seqGenerate.generateId();
+            this.seqs[node.id] = seq;
+            this.sorted[seq] = node;
+        },
+        get(id) { return this.seqs[id] },
+        getNode(seq) { return this.sorted[seq] },
+        size() { return Object.keys(this.seqs).length }
     }
 }
 
@@ -114,7 +130,13 @@ export class CopyPropagation implements Pass {
             return s1.size === s2.size && [...s1].every((ele, index, _) => s2.has(ele));
         }
 
-        const buildReachDef = function (node: FlowNode, visted_node: Set<number>, gens: Record<number, Set<number>>, kills: Record<number, Set<number>>, defs: Record<number, Set<DefUseNode>>): boolean {
+        const buildReachDef = function (gens: Record<number, Set<number>>, kills: Record<number, Set<number>>, defs: Record<number, Set<DefUseNode>>, wSet: WSet, idSeq: IdSeq): void {
+            console.log(`in buildReachDef  wSet.size:${wSet.data.size}`)
+            /*
+            in[n] = out[s1] U out[s2] U out[s3] ...  //s是n的前驱节点
+            out[n] = gen[n] U (in[n] - kill[n])
+            深度递归容易堆栈溢出，使用迭代
+            */
             const combine = function (node, gens: Record<number, Set<number>>, kills: Record<number, Set<number>>): Set<number>[] {
                 let inReach = new Set<number>();
                 let outReach = new Set<number>();
@@ -126,37 +148,38 @@ export class CopyPropagation implements Pass {
                 outReach = new Set([...(gens[node.id] || []), ...([...inReach].filter((x: number) => !cKills.has(x)))]);
                 return [inReach, outReach];
             }
-            let hasChanged = false;
-            if (visted_node.has(node.id)) {
-                return hasChanged;
-            } else {
-                visted_node.add(node.id);
+            let total = idSeq.size();
+            while (wSet.data.size > 0) {
+                console.log(`in buildReachDef wSet.data.size:${wSet.data.size}`);
+                for (let seq = 1; seq <= total; seq++) {
+                    let node = idSeq.getNode(seq);
+                    if (!node) debugger;
+                    let hasChanged = false;
+                    if (wSet.data.has(node.id)) {
+                        wSet.data.delete(node.id);
+                        let [inReach, outReach] = combine(node, gens, kills);
+                        node.inReach = inReach;
+                        if (!setEqual(outReach, node.outReach)) {
+                            hasChanged = true;
+                            node.outReach = outReach;
+                        }
+                        for (let edge of node.outgoingEdges) {
+                            if (hasChanged) {
+                                wSet.data.add(edge.target.id);
+                            }
+                        }
+                        if (hasChanged && node.inReach) {
+                            node.inReach.forEach(id => {
+                                node.inReachDefs[id] = defs[id];
+                            })
+                        }
+                    }
+                }
             }
-            // if(node.id===6270){
-            //     debugger;
-            // }
-            let [inReach, outReach] = combine(node, gens, kills);
-            if (!setEqual(inReach, node.inReach)) {
-                hasChanged = true;
-                node.inReach = inReach;
-            }
-            if (!setEqual(outReach, node.outReach)) {
-                hasChanged = true;
-                node.outReach = outReach;
-            }
-
-            for (let edge of node.outgoingEdges) {
-                hasChanged = hasChanged || buildReachDef(edge.target, visted_node, gens, kills, defs);
-            }
-            if (!hasChanged && node.inReach) {
-                node.inReach.forEach(id => {
-                    node.inReachDefs[id] = defs[id];
-                })
-            }
-            return hasChanged;
         }
 
-        const buildActivity = function (node: FlowNode, entry: FlowNode, visted_node: Set<number>): boolean {
+        const buildActivity = function (entry: FlowNode, wSet: WSet, idSeq: IdSeq): void {
+            console.log('in buildActivity')
             const activityStep = function (node: FlowNode): Set<string>[] {
                 /*
                 in[n] = use[n] U (out[n] - defs[n]);
@@ -175,46 +198,63 @@ export class CopyPropagation implements Pass {
 
                 return [inActivity, outActivity];
             };
-            let hasChanged = false;
-            if (!node) return hasChanged;
-            if (visted_node.has(node.id)) {
-                return hasChanged;
-            } else {
-                visted_node.add(node.id);
-            }
-            let [inActivity, outActivity] = activityStep(node);
-            if (!setEqual(inActivity, node.inActivity)) {
-                hasChanged = true;
-                node.inActivity = inActivity;
-            }
-            if (!setEqual(outActivity, node.outActivity)) {
-                hasChanged = true;
-                node.outActivity = outActivity;
-            }
-            if (node.id !== entry.id) {
-                for (let edge of node.incomingEdges) {
-                    hasChanged = hasChanged || buildActivity(edge.source, entry, visted_node);
+            let total = idSeq.size();
+            while (wSet.data.size > 0) {
+                // console.log(`in buildActivity wSet.data.size:${wSet.data.size}`);
+                if (wSet.data.size === 1) {
+                    if (!([...wSet.data][0] in idSeq.seqs)) {
+                        console.log([...wSet.data][0]);
+                        debugger;
+                    }
+                }
+                for (let seq = total; seq >= 1; seq--) {
+                    let node = idSeq.getNode(seq);
+                    if (!node) debugger;
+
+                    let hasChanged = false;
+                    if (wSet.data.has(node.id)) {
+                        wSet.data.delete(node.id);
+                        let [inActivity, outActivity] = activityStep(node);
+                        if (!setEqual(inActivity, node.inActivity)) {
+                            hasChanged = true;
+                            node.inActivity = inActivity;
+                        }
+                        if (!setEqual(outActivity, node.outActivity)) {
+                            hasChanged = true;
+                            node.outActivity = outActivity;
+                        }
+                        // }
+                        if (node.id !== entry.id) {
+                            for (let edge of node.incomingEdges) {
+                                if (hasChanged) {
+                                    if (edge.source.id === 493) {
+                                        var a = 2;
+                                    }
+                                    wSet.data.add(edge.source.id);
+                                }
+                            }
+                        }
+                    }
                 }
             }
-            return hasChanged;
         }
 
-        const buildDefs = function (node: FlowNode, visted_node: Set<number>, defName2Id: Record<string, Set<number>>, idSeq: IdSeq): [Record<number, Set<DefUseNode>>, Record<number, Set<number>>, Record<number, Set<number>>] {
+        const buildDefs = function (node: FlowNode, visted_node: Set<number>, defName2Id: Record<string, Set<number>>, idSeq: IdSeq, wSet: WSet, nodes: Record<number, FlowNode>): [Record<number, Set<DefUseNode>>, Record<number, Set<number>>, Record<number, Set<number>>] {
             let defs = {};
             let gens: Record<number, Set<number>> = {};
             let kills: Record<number, Set<number>> = {};
             // let defName2Id: Record<string, Set<number>> = {};
-            if (!node.outgoingEdges || node.outgoingEdges.length == 0) {
-                return [defs, gens, kills];
-            }
+
             if (visted_node.has(node.id)) {
                 //防止无限循环
                 return [defs, gens, kills];
             } else {
                 visted_node.add(node.id);
             }
-            idSeq.put(node.id);
+            wSet.data.add(node.id);
+            idSeq.put(node);
             defs[node.id] = node.defs;
+            nodes[node.id] = node;
             node.defs.forEach((v: DefUseNode) => {
                 if (!defName2Id[v.name]) {
                     defName2Id[v.name] = new Set();
@@ -231,9 +271,8 @@ export class CopyPropagation implements Pass {
             k.delete(node.id);
             kills[node.id] = k;
             //============
-
             for (let edge of node.outgoingEdges) {
-                let [ndefs, ngens, nkills] = buildDefs(edge.target, visted_node, defName2Id, idSeq);
+                let [ndefs, ngens, nkills] = buildDefs(edge.target, visted_node, defName2Id, idSeq, wSet, nodes);
                 defs = Object.assign(defs, ndefs);
                 // Object.entries(ndefName2Id).forEach(entry => {
                 //     if (!defName2Id[entry[0]]) {
@@ -281,34 +320,52 @@ export class CopyPropagation implements Pass {
             if (path.node.extra && path.node.extra.cfg && !path.node.extra.minerva_cp) {
                 // let edges = path.node.extra.cfg.flowGraph.edges;
                 let entry: FlowNode = path.node.extra.cfg['flowGraph']['entry'];
-                if ('id' in path.node && 'name' in path.node.id && path.node.id.name === '_mmfunc3067') {
+                if ('id' in path.node && 'name' in path.node.id && path.node.id.name === '_mmfunc2989') {
                     debugger;
                 }
                 let start = new Date().getTime();
                 // let ndefName2Id:Record<number, Set<number>> = {};
-                let [ndefs, gens, kills] = buildDefs(entry, new Set(), defName2Id, idSeq);
+                let wSet = {
+                    data: new Set<number>(),
+                    entry: [],
+                    copy: function (): WSet { return { data: new Set([...this.data]), entry: [...this.entry], copy: this.copy } }
+                };
+                let nodes: Record<number, FlowNode> = {};
+                let [ndefs, gens, kills] = buildDefs(entry, new Set(), defName2Id, idSeq, wSet, nodes);
+                path.node.extra.cfg['flowGraph']['nodes'] = nodes;
                 defs = Object.assign(defs, ndefs);
-                // Object.entries(ndefName2Id).forEach(entry => {
-                //     if (!defName2Id[entry[0]]) {
-                //         defName2Id[entry[0]] = new Set();
-                //     }
-                //     defName2Id[entry[0]] = new Set<number>([...defName2Id[entry[0]], ...entry[1]]);
-                // })
                 buildDefCost += (new Date().getTime() - start);
 
                 //u: 12209   内部i:12147
                 // let [gens, kills] = buildGenkills(defs, defName2Id);
                 start = new Date().getTime();
-                while (buildReachDef(entry, new Set<number>(), gens, kills, defs)) { } //到达定值分析
+                if ('id' in path.node && 'name' in path.node.id) {
+                    console.log(`${path.node.id.name} begin buildReachDef ${path.node.id.name}`);
+                }
+                let cpWSet = wSet.copy();
+                // cpWSet.entry.push(entry);
+                // let rdEntry = entry;
+                buildReachDef(gens, kills, defs, cpWSet, idSeq);
+                if ('id' in path.node && 'name' in path.node.id) {
+                    console.log(`${path.node.id.name} buildReachDef end ${cpWSet.data.size}`);
+                }
+                // while (cpWSet.data.size > 0) {
+                //     // let et = cpWSet.entry.pop();
+                //     // if (!et) debugger;
+                //     buildReachDef(rdEntry, new Set<number>(), gens, kills, defs, cpWSet);
+                //     if (cpWSet.data.size > 0) {
+                //         rdEntry = nodes[Math.min(...cpWSet.data)];
+                //     }
+                // } //到达定值分析
+                // while (buildReachDef(entry, new Set<number>(), gens, kills, defs, cpWSet)) { round++;}
                 buildReachDefCost += (new Date().getTime() - start);
                 //复制传播优化,如有需要，可以多来几次
-                for (let i = 0; i < 2; i++) {
+                for (let i = 0; i < 1; i++) {
                     start = new Date().getTime();
                     let cps = copyPropag(entry, new Set(), defs, defName2Id, idSeq);
                     copyPropagCost += (new Date().getTime() - start);
-                    // let cps = travesFlow(entry, {}, new Set());417929
                     if (Object.keys(cps).length > 0) {
-                        if (i == 1) debugger;
+                        // if (i == 1) debugger;
                         start = new Date().getTime();
                         path.traverse({
                             Identifier(ipath: NodePath) {
@@ -356,9 +413,12 @@ export class CopyPropagation implements Pass {
                 }
 
                 start = new Date().getTime();
-                let exit: FlowNode = path.node.extra.cfg['flowGraph']['successExit'];
-                let errorExit: FlowNode = path.node.extra.cfg['flowGraph']['errorExit'];
-                while (buildActivity((exit || errorExit), entry, new Set<number>())) { } //活跃分析
+                // let exit: FlowNode = path.node.extra.cfg['flowGraph']['successExit'];
+                // let errorExit: FlowNode = path.node.extra.cfg['flowGraph']['errorExit'];
+                let acWSet = wSet.copy();
+                // acWSet.entry.push((exit || errorExit));
+                // rdEntry = exit || errorExit;
+                buildActivity(entry, acWSet, idSeq);
                 buildActivityCost += (new Date().getTime() - start);
                 path.node.extra.minerva_cp = 1;
 

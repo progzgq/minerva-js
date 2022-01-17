@@ -6,7 +6,7 @@ import { CopyPropagation } from '../components/pass/copy-propagation'
 import { DecryptString } from '../components/pass/decrypt-string'
 const vm = require('vm');
 const fs = require('fs');
-const fileName = 'pdd1.js'
+const fileName = 'taobao.js'
 const code = fs.readFileSync(`${__dirname}/${fileName}`).toString();
 const cfgBuilder = require('../components/cfg/cfg.ts');
 const ast = babel.parse(code);

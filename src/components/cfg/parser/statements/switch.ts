@@ -17,6 +17,7 @@ import {
   FlowNode,
   ParsingContext
 } from "../../flow";
+import { parseExpression } from "./expression";
 
 export { parseSwitchStatement };
 
@@ -32,22 +33,23 @@ function parseSwitchStatement(
   context: ParsingContext,
   label?: string
 ): Completion {
-  const switchExpressionIdentifier = context.createTemporaryLocalVariableName(
-    "switch"
-  );
+  // const switchExpressionIdentifier = context.createTemporaryLocalVariableName(
+  //   "switch"
+  // );
 
-  let switchExpressionAssignment = createAssignmentExpression({
-    left: createIdentifier(switchExpressionIdentifier),
-    right: switchStatement.discriminant
-  });
+  // let switchExpressionAssignment = createAssignmentExpression({
+  //   left: createIdentifier(switchExpressionIdentifier),
+  //   right: switchStatement.discriminant
+  // });
 
-  let evaluatedDiscriminantNode = context
-    .createNode()
-    .appendTo(
-      currentNode,
-      stringify(switchExpressionAssignment),
-      switchExpressionAssignment
-    );
+  // let evaluatedDiscriminantNode = context
+  //   .createNode()
+  //   .appendTo(
+  //     currentNode,
+  //     stringify(switchExpressionAssignment),
+  //     switchExpressionAssignment
+  //   );
+  let evaluatedDiscriminantNode = parseExpression(switchStatement.discriminant, currentNode, context);
 
   let finalNode = context.createNode();
   let updateNode = context.createNode();//为了breakContinue.ts流程，构建一个
@@ -62,24 +64,25 @@ function parseSwitchStatement(
   let { caseClausesA, defaultCase, caseClausesB } = partitionCases(
     switchStatement.cases
   );
-  
+
   updateNode.appendEpsilonEdgeTo(evaluatedDiscriminantNode);
   let stillSearchingNode = evaluatedDiscriminantNode;
   let endOfPreviousCaseBody: Completion = null;
   let firstNodeOfClauseListB: FlowNode = null;
 
   for (let caseClause of [...caseClausesA, ...caseClausesB]) {
-    let matchingCaseCondition = createIdentityComparisonExpression({
-      left: createIdentifier(switchExpressionIdentifier),
-      right: caseClause.test
-    });
+    // let matchingCaseCondition = createIdentityComparisonExpression({
+    //   left: createIdentifier(switchExpressionIdentifier),
+    //   right: caseClause.test
+    // });
 
     let beginOfCaseBody = context
       .createNode()
       .appendConditionallyTo(
         stillSearchingNode,
-        stringify(matchingCaseCondition),
-        matchingCaseCondition
+        null, caseClause.test
+        // stringify(matchingCaseCondition),
+        // matchingCaseCondition
       );
 
     if (caseClause === caseClausesB[0]) {
@@ -99,13 +102,14 @@ function parseSwitchStatement(
       context
     );
 
-    let nonMatchingCaseCondition = negateTruthiness(matchingCaseCondition);
+    // let nonMatchingCaseCondition = negateTruthiness(matchingCaseCondition);
     stillSearchingNode = context
       .createNode()
       .appendConditionallyTo(
         stillSearchingNode,
-        stringify(nonMatchingCaseCondition),
-        nonMatchingCaseCondition
+        null, caseClause.test
+        // stringify(nonMatchingCaseCondition),
+        // nonMatchingCaseCondition
       );
   }
 
@@ -113,6 +117,8 @@ function parseSwitchStatement(
     // If the last case didn't end with an abrupt completion,
     // connect it to the final node and resume normal control flow.
     finalNode.appendEpsilonEdgeTo(endOfPreviousCaseBody.normal);
+  }else if(endOfPreviousCaseBody && endOfPreviousCaseBody.return){
+    finalNode.appendEpsilonEdgeTo(endOfPreviousCaseBody.data);
   }
 
   if (defaultCase) {

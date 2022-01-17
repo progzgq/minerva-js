@@ -177,19 +177,23 @@ function processFromCache(responseDetail, url, body) {
 }
 
 function processRealtime(responseDetail, url, body) {
-    let newJsCode = processJs(body);
-    newJsCode = newJsCode.replace(/"use strict";/g, '');
     const md5 = crypto.createHash("md5");
     const md5Digest = md5.update(url).digest("hex");
     const cacheFilePath = injectSuccessJsFileCacheDirectory + "/" + md5Digest + ".js";
     const originFilePath = injectSuccessJsFileCacheOriginDirectory + "/" + md5Digest + ".js";
+    if (!disableCache) {
+        fs.writeFileSync(originFilePath, body);
+    }
+    
+    let newJsCode = processJs(body);
+    newJsCode = newJsCode.replace(/"use strict";/g, '');
+    
     const meta = {
         url,
         filepath: cacheFilePath,
         cacheTime: new Date().getTime()
     };
     if (!disableCache) {
-        fs.writeFileSync(originFilePath, body);
         fs.writeFileSync(cacheFilePath, newJsCode);
         fs.appendFileSync(injectSuccessJsFileCacheMetaFile, JSON.stringify(meta) + "\n");
     }

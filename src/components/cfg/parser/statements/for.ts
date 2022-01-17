@@ -25,9 +25,9 @@ function parseForStatement(
   let initNode = parseInit(forStatement.init, currentNode, context)
     .normal;
   let testDecisionNode = context.createNode().appendEpsilonEdgeTo(initNode);
-    // if(forStatement.init && forStatement.init.start===903206){
-    //   debugger;
-    // }
+  // if(forStatement.init && forStatement.init.start===903206){
+  //   debugger;
+  // }
 
   // Create nodes for loop cornerstones
   let beginOfLoopBodyNode = context.createNode();
@@ -95,6 +95,12 @@ function parseForStatement(
     // If we reached the end of the loop body through normal control flow,
     // continue regularly with the update
     updateNode.appendEpsilonEdgeTo(loopBodyCompletion.normal);
+    if (!forStatement.test) {
+      //没有test,for循环应该被body终止
+      finalNode.appendEpsilonEdgeTo(loopBodyCompletion.normal);
+    }
+  } else if (loopBodyCompletion.break) {
+    updateNode.appendEpsilonEdgeTo(loopBodyCompletion.data);
   }
 
   return { normal: finalNode };

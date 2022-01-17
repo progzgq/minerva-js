@@ -22,6 +22,8 @@ function parseThrowStatement(
 ): Completion {
   let throwLabel = "throw " + stringify(throwStatement.argument);
   let enclosingStatements = context.enclosingStatements.enumerateElements();
+  let throwNode = context.createNode().appendTo(currentNode, "throw", throwStatement);
+  currentNode = throwNode;
 
   let foundHandler = false;
 
@@ -36,7 +38,7 @@ function parseThrowStatement(
       let handlerVariableAssignment = createAssignmentExpression({
         left: tryStatement.handler.param,
         right: throwStatement.argument
-      });
+      });//TODO
 
       let assignmentNode = context
         .createNode()
@@ -77,5 +79,5 @@ function parseThrowStatement(
     );
   }
 
-  return { throw: true };
+  return { throw: true, data: throwNode };
 }

@@ -18,7 +18,7 @@ export interface ControlFlowGraph {
   entry: FlowNode;
   successExit: FlowNode;
   errorExit: FlowNode;
-  nodes: FlowNode[];
+  nodes: Record<number, FlowNode>;
   edges: FlowEdge[];
 }
 
@@ -147,6 +147,7 @@ export interface Completion {
   continue?: boolean;
   return?: boolean;
   throw?: boolean;
+  data?: FlowNode;
 }
 
 export const enum EnclosingStatementType {

@@ -69,7 +69,6 @@ if (!window.minerva_hook) {
             Object.assign(f_scope.scope, scope);
             this.scope_stack.pop();
         },
-        
         search: function (pattern, firstOnly = true, isEquals = false, isNeedExpansion = false) {
             let fieldName = '';
             _search(fieldName, firstOnly, pattern, isEquals, isNeedExpansion);
