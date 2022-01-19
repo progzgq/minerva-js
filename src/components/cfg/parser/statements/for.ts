@@ -37,23 +37,25 @@ function parseForStatement(
   if (forStatement.test) {
     // If the loop has a test expression,
     // we need to add truthy and falsy edges
-    let truthyCondition = forStatement.test;
-    let falsyCondition = negateTruthiness(truthyCondition);
+    // let truthyCondition = forStatement.test;
+    // let falsyCondition = negateTruthiness(truthyCondition);
 
-    // Create edges labels
-    let truthyConditionLabel = stringify(truthyCondition);
-    let falsyConditionLabel = stringify(falsyCondition);
+    // // Create edges labels
+    // let truthyConditionLabel = stringify(truthyCondition);
+    // let falsyConditionLabel = stringify(falsyCondition);
+    
+    let testFinishNode = parseExpression(forStatement.test,testDecisionNode,context);
 
     // Add truthy and falsy edges
     beginOfLoopBodyNode.appendConditionallyTo(
-      testDecisionNode,
-      truthyConditionLabel,
-      truthyCondition
+      testFinishNode,
+      "true",
+      null
     );
     finalNode.appendConditionallyTo(
-      testDecisionNode,
-      falsyConditionLabel,
-      falsyCondition
+      testFinishNode,
+      "false",
+      null
     );
   } else {
     // If the loop doesn't have a test expression,

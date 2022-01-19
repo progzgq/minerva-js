@@ -102,9 +102,11 @@ export class CopyPropagation implements Pass {
                         if (defReachs.length === 1 && defReachs[0].brother && !defReachs[0].ambiguity) {
                             //有且只有1个定值到达,且不是模糊定值
                             let brotherName = defReachs[0].brother.name;
+                            let min = idSeq.get(reachIds[0]);
+                            let max = idSeq.get(edge.target.id);
                             let hasBrotherDef = [...(defName2Id[brotherName] || [])].some(id => {
                                 let seq = idSeq.get(id);
-                                return seq > idSeq.get(reachIds[0]) && seq < idSeq.get(edge.target.id);
+                                return seq > min && seq < max;
                             })
                             if (!hasBrotherDef) {
                                 ret[useNode.id] = {
@@ -130,7 +132,7 @@ export class CopyPropagation implements Pass {
             return s1.size === s2.size && [...s1].every((ele, index, _) => s2.has(ele));
         }
 
-        const buildReachDef = function (gens: Record<number, Set<number>>, kills: Record<number, Set<number>>, defs: Record<number, Set<DefUseNode>>, wSet: WSet, idSeq: IdSeq): void {
+        const buildReachDef = function (entry: FlowNode, gens: Record<number, Set<number>>, kills: Record<number, Set<number>>, defs: Record<number, Set<DefUseNode>>, wSet: WSet, idSeq: IdSeq): void {
             console.log(`in buildReachDef  wSet.size:${wSet.data.size}`)
             /*
             in[n] = out[s1] U out[s2] U out[s3] ...  //s是n的前驱节点
@@ -151,7 +153,7 @@ export class CopyPropagation implements Pass {
             let total = idSeq.size();
             while (wSet.data.size > 0) {
                 console.log(`in buildReachDef wSet.data.size:${wSet.data.size}`);
-                for (let seq = 1; seq <= total; seq++) {
+                for (let seq = idSeq.get(entry.id); seq <= total; seq++) {
                     let node = idSeq.getNode(seq);
                     if (!node) debugger;
                     let hasChanged = false;
@@ -207,7 +209,7 @@ export class CopyPropagation implements Pass {
                         debugger;
                     }
                 }
-                for (let seq = total; seq >= 1; seq--) {
+                for (let seq = total; seq >= idSeq.get(entry.id); seq--) {
                     let node = idSeq.getNode(seq);
                     if (!node) debugger;
 
@@ -239,7 +241,7 @@ export class CopyPropagation implements Pass {
             }
         }
 
-        const buildDefs = function (node: FlowNode, visted_node: Set<number>, defName2Id: Record<string, Set<number>>, idSeq: IdSeq, wSet: WSet, nodes: Record<number, FlowNode>): [Record<number, Set<DefUseNode>>, Record<number, Set<number>>, Record<number, Set<number>>] {
+        const preProcess = function (node: FlowNode, visted_node: Set<number>, defName2Id: Record<string, Set<number>>, idSeq: IdSeq, wSet: WSet, nodes: Record<number, FlowNode>): [Record<number, Set<DefUseNode>>, Record<number, Set<number>>, Record<number, Set<number>>] {
             let defs = {};
             let gens: Record<number, Set<number>> = {};
             let kills: Record<number, Set<number>> = {};
@@ -272,7 +274,7 @@ export class CopyPropagation implements Pass {
             kills[node.id] = k;
             //============
             for (let edge of node.outgoingEdges) {
-                let [ndefs, ngens, nkills] = buildDefs(edge.target, visted_node, defName2Id, idSeq, wSet, nodes);
+                let [ndefs, ngens, nkills] = preProcess(edge.target, visted_node, defName2Id, idSeq, wSet, nodes);
                 defs = Object.assign(defs, ndefs);
                 // Object.entries(ndefName2Id).forEach(entry => {
                 //     if (!defName2Id[entry[0]]) {
@@ -318,106 +320,82 @@ export class CopyPropagation implements Pass {
 
         const processFunction = function (path: NodePath, defs: Record<number, Set<DefUseNode>>, defName2Id: Record<string, Set<number>>, idSeq: IdSeq) {
             if (path.node.extra && path.node.extra.cfg && !path.node.extra.minerva_cp) {
-                // let edges = path.node.extra.cfg.flowGraph.edges;
                 let entry: FlowNode = path.node.extra.cfg['flowGraph']['entry'];
-                if ('id' in path.node && 'name' in path.node.id && path.node.id.name === '_mmfunc2989') {
-                    debugger;
-                }
+                // if ('id' in path.node && 'name' in path.node.id && path.node.id.name === '_mmfunc17') {
+                //     debugger;
+                // }
                 let start = new Date().getTime();
-                // let ndefName2Id:Record<number, Set<number>> = {};
                 let wSet = {
                     data: new Set<number>(),
                     entry: [],
                     copy: function (): WSet { return { data: new Set([...this.data]), entry: [...this.entry], copy: this.copy } }
                 };
                 let nodes: Record<number, FlowNode> = {};
-                let [ndefs, gens, kills] = buildDefs(entry, new Set(), defName2Id, idSeq, wSet, nodes);
+                let [ndefs, gens, kills] = preProcess(entry, new Set(), defName2Id, idSeq, wSet, nodes);
                 path.node.extra.cfg['flowGraph']['nodes'] = nodes;
                 defs = Object.assign(defs, ndefs);
                 buildDefCost += (new Date().getTime() - start);
 
                 //u: 12209   内部i:12147
-                // let [gens, kills] = buildGenkills(defs, defName2Id);
                 start = new Date().getTime();
                 if ('id' in path.node && 'name' in path.node.id) {
                     console.log(`${path.node.id.name} begin buildReachDef ${path.node.id.name}`);
                 }
                 let cpWSet = wSet.copy();
-                // cpWSet.entry.push(entry);
-                // let rdEntry = entry;
-                buildReachDef(gens, kills, defs, cpWSet, idSeq);
+                buildReachDef(entry, gens, kills, defs, cpWSet, idSeq);
                 if ('id' in path.node && 'name' in path.node.id) {
                     console.log(`${path.node.id.name} buildReachDef end ${cpWSet.data.size}`);
                 }
-                // while (cpWSet.data.size > 0) {
-                //     // let et = cpWSet.entry.pop();
-                //     // if (!et) debugger;
-                //     buildReachDef(rdEntry, new Set<number>(), gens, kills, defs, cpWSet);
-                //     if (cpWSet.data.size > 0) {
-                //         rdEntry = nodes[Math.min(...cpWSet.data)];
-                //     }
-                // } //到达定值分析
-                // while (buildReachDef(entry, new Set<number>(), gens, kills, defs, cpWSet)) { round++;}
                 buildReachDefCost += (new Date().getTime() - start);
                 //复制传播优化,如有需要，可以多来几次
-                for (let i = 0; i < 1; i++) {
+                // for (let i = 0; i < 1; i++) {
+                start = new Date().getTime();
+                let cps = copyPropag(entry, new Set(), defs, defName2Id, idSeq);
+                copyPropagCost += (new Date().getTime() - start);
+                if (Object.keys(cps).length > 0) {
+                    // if (i == 1) debugger;
                     start = new Date().getTime();
-                    let cps = copyPropag(entry, new Set(), defs, defName2Id, idSeq);
-                    copyPropagCost += (new Date().getTime() - start);
-                    if (Object.keys(cps).length > 0) {
-                        // if (i == 1) debugger;
-                        start = new Date().getTime();
-                        path.traverse({
-                            Identifier(ipath: NodePath) {
-                                let cp = ipath.node.start ? cps[ipath.node.start] : null;
-                                if (cp && cp.replaceUseNode.brother && types.isIdentifier(ipath.node)) {
-                                    // if (cp.replaceUseNode.brother.name === '$$func2338_e') {
-                                    //     debugger;
-                                    // }
-                                    delete cps[ipath.node.start];
-                                    //@ts-ignore
-                                    cp.data.uses = new Set([...cp.data.uses].filter(x => x.name != ipath.node.name));
-                                    let newIdentifier = types.identifier(cp.replaceUseNode.brother.name);
-                                    if (cp.data.defs) {
-                                        cp.data.defs.forEach(x => {
-                                            //var s=u;  u-->x
-                                            //改变会传导
-                                            //@ts-ignore
-                                            if (x.brother && x.brother.name === ipath.node.name) {
-                                                x.brother = newIdentifier;
-                                            }
-                                        });
-                                    }
-                                    // if (cp.oriUseNode.name === 'n' && cp.replaceUseNode.brother.name === 'r') {
-                                    //     debugger;
-                                    // }
-                                    console.log(`${ipath.parentPath.toString()} replace ${cp.oriUseNode.name} with ${cp.replaceUseNode.brother.name}`)
-                                    ipath.replaceWith(newIdentifier);
-                                    cp.data.uses.add(DefUseNode.create(newIdentifier, null, ipath.node.start));
-
-                                    let binding = ipath.scope.getBinding(cp.replaceUseNode.brother.name);
-                                    if (binding) {
-                                        binding.referencePaths.push(ipath);
-                                    }
-                                    if (Object.keys(cps).length == 0) ipath.stop();
-                                    // ipath.stop(); 后面还有几轮所以不能停止
+                    path.traverse({
+                        Identifier(ipath: NodePath) {
+                            let cp = ipath.node.start ? cps[ipath.node.start] : null;
+                            if (cp && cp.replaceUseNode.brother && types.isIdentifier(ipath.node)) {
+                                delete cps[ipath.node.start];
+                                //@ts-ignore
+                                cp.data.uses = new Set([...cp.data.uses].filter(x => x.name != ipath.node.name));
+                                let newIdentifier = types.identifier(cp.replaceUseNode.brother.name);
+                                if (cp.data.defs) {
+                                    cp.data.defs.forEach(x => {
+                                        //var s=u;  u-->x
+                                        //改变会传导
+                                        //@ts-ignore
+                                        if (x.brother && x.brother.name === ipath.node.name) {
+                                            x.brother = newIdentifier;
+                                        }
+                                    });
                                 }
+                                console.log(`${ipath.parentPath.toString()} replace ${cp.oriUseNode.name} with ${cp.replaceUseNode.brother.name}`)
+                                ipath.replaceWith(newIdentifier);
+                                cp.data.uses.add(DefUseNode.create(newIdentifier, null, ipath.node.start));
+
+                                let binding = ipath.scope.getBinding(cp.replaceUseNode.brother.name);
+                                if (binding) {
+                                    binding.referencePaths.push(ipath);
+                                }
+                                if (Object.keys(cps).length == 0) ipath.stop();
+                                // ipath.stop(); 后面还有几轮所以不能停止
                             }
-                        });
-                        traverseReplaceCost += (new Date().getTime() - start);
-                        if (Object.keys(cps).length > 0) { debugger; }
-                    }
-                    else {
-                        break;
-                    }
+                        }
+                    });
+                    traverseReplaceCost += (new Date().getTime() - start);
+                    if (Object.keys(cps).length > 0) { debugger; }
                 }
+                // else {
+                //     break;
+                // }
+                // }
 
                 start = new Date().getTime();
-                // let exit: FlowNode = path.node.extra.cfg['flowGraph']['successExit'];
-                // let errorExit: FlowNode = path.node.extra.cfg['flowGraph']['errorExit'];
                 let acWSet = wSet.copy();
-                // acWSet.entry.push((exit || errorExit));
-                // rdEntry = exit || errorExit;
                 buildActivity(entry, acWSet, idSeq);
                 buildActivityCost += (new Date().getTime() - start);
                 path.node.extra.minerva_cp = 1;
@@ -429,9 +407,6 @@ export class CopyPropagation implements Pass {
                         let binding = path.scope.bindings[key];
                         if (types.isFunctionDeclaration(binding.path.node)) {
                             if (binding.path.node.extra && binding.path.node.extra.cfg) {
-                                if (binding.path.node.id.name === '$$func2316') {
-                                    debugger;
-                                }
                                 let childEntry: FlowNode = binding.path.node.extra.cfg['flowGraph']['entry'];
                                 childEntry.appendEpsilonEdgeTo(exitNode);
                                 // childEntry.inReach = new Set([...childEntry.inReach,...exitNode.outReach]);
@@ -446,11 +421,7 @@ export class CopyPropagation implements Pass {
         let start = new Date().getTime();
         babel.traverse(ast, {
             FunctionDeclaration(path) {
-                // if (path.node.id.name === '$$func76') {
-                //     debugger
-                // }
                 processFunction(path, {}, {}, createIdSeq());
-
             }
         });
         let total = new Date().getTime() - start;

@@ -49,6 +49,10 @@ if (!window.minerva_hook) {
                 children: [],
                 parent: [],
             };
+            if (!f.minerva_scopes) {
+                f.minerva_scopes = []
+            }
+            f.minerva_scopes.push(cScope);
             this.scope_db[scope_id] = cScope;
             this.scope_seqs.push(scope_id);
             var lastScope = this.scope_stack.length > 0 ? this.scope_stack[this.scope_stack.length - 1] : null;
@@ -76,7 +80,22 @@ if (!window.minerva_hook) {
             alreadyProcessMessageIdSet.add(messageId);
             // 然后递归搜索父页面和子页面
             _searchParentAndChildren(messageId, fieldName, firstOnly, pattern, isEquals, isNeedExpansion);
-        }
+        },
+        exportFunction: function (fileName, funcName) {
+            const xhr = new XMLHttpRequest();
+            let code = "";
+            xhr.addEventListener("load", () => {
+                console.log("exportFunction end");
+                code = xhr.responseText;
+            });
+            let url = new URL("http://127.0.0.1:10010/export_function");
+            url.searchParams.set('fileName', fileName);
+            url.searchParams.set('funcName', funcName);
+            console.log(`send exportFunction request: ${url.toString()} waiting...`);
+            xhr.open("GET", url, false);
+            xhr.send();
+            console.log(code);
+        },
     }
 }
 
@@ -158,5 +177,6 @@ function _search(filedName, firstOnly, pattern, isEquals, isNeedExpansion) {
         }
     }
 }
+
 
 minerva_hook = window.minerva_hook;

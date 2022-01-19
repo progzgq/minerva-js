@@ -1,6 +1,7 @@
 import * as ESTree from "./estree";
 import { FlowProgram, ParserOptions } from "./flow";
 import * as Parser from "./parser/parser";
+import * as AstPreprocessing from "./parser/preprocessing/functionExpressionRewriter";
 
 export { parse };
 export * from "./flow";
@@ -15,7 +16,12 @@ function parse(program: ESTree.Program, options?: ParserOptions): ESTree.Program
   // }
 
   var normalizedOptions = normalizeParserOptions(options);
-
+  if (normalizedOptions.rewriteFunction) {
+    AstPreprocessing.rewriteFunctionExpressions(program);
+  }
+  if (normalizedOptions.removeMinervaHook) {
+    AstPreprocessing.removeMinervaHook(program);
+  }
   return Parser.parse(program, normalizedOptions);
 }
 
@@ -26,23 +32,25 @@ function isObject(value: any): boolean {
 function normalizeParserOptions(options: ParserOptions): ParserOptions {
   let removeTransitNodes: boolean;
   let rewriteConstantConditionalEdges: boolean;
+  let rewriteFunction: boolean;
+  let removeMinervaHook: boolean;
 
   if (typeof options === "undefined") {
     removeTransitNodes = true;
     rewriteConstantConditionalEdges = true;
+    rewriteFunction = true;
+    removeMinervaHook = false;
   } else {
-    let passes = options.passes;
-
-    removeTransitNodes =
-      passes === true || (passes && passes.removeTransitNodes);
-    rewriteConstantConditionalEdges =
-      passes === true || (passes && passes.rewriteConstantConditionalEdges);
+    removeTransitNodes = options.removeTransitNodes || removeTransitNodes;
+    rewriteConstantConditionalEdges = options.rewriteConstantConditionalEdges || rewriteConstantConditionalEdges;
+    rewriteFunction = options.rewriteFunction || rewriteFunction;
+    removeMinervaHook = options.removeMinervaHook || removeMinervaHook;
   }
 
   return {
-    passes: {
-      removeTransitNodes,
-      rewriteConstantConditionalEdges
-    }
+    removeTransitNodes,
+    rewriteConstantConditionalEdges,
+    rewriteFunction,
+    removeMinervaHook
   };
 }

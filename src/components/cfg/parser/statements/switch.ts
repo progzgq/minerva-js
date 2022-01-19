@@ -117,7 +117,9 @@ function parseSwitchStatement(
     // If the last case didn't end with an abrupt completion,
     // connect it to the final node and resume normal control flow.
     finalNode.appendEpsilonEdgeTo(endOfPreviousCaseBody.normal);
-  }else if(endOfPreviousCaseBody && endOfPreviousCaseBody.return){
+  } else if (endOfPreviousCaseBody && endOfPreviousCaseBody.return) {
+    finalNode.appendEpsilonEdgeTo(endOfPreviousCaseBody.data);
+  } else if (endOfPreviousCaseBody && endOfPreviousCaseBody.throw) {
     finalNode.appendEpsilonEdgeTo(endOfPreviousCaseBody.data);
   }
 

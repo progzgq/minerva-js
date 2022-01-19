@@ -157,6 +157,8 @@ function parseTryCatchFinally(
     }
 
     return finalizer.bodyCompletion;
+  } else if (tryBlockCompletion.data) {
+    finalNode.appendEpsilonEdgeTo(tryBlockCompletion.data);
   }
 
   if (handlerBodyCompletion.normal) {
@@ -169,6 +171,8 @@ function parseTryCatchFinally(
     }
 
     return finalizer.bodyCompletion;
+  } else if (handlerBodyCompletion.data) {
+    finalNode.appendEpsilonEdgeTo(handlerBodyCompletion.data);
   }
 
   return { normal: finalNode };

@@ -6,7 +6,7 @@
 
 2.代码反混淆(持续增加中...)
 
-3.TODO:目标函数二次优化(可继续逆向逻辑，或直接丢进VM执行)
+3.目标函数导出(可继续逆向逻辑，或直接丢进VM执行)
 
 ## 使用介绍
 ### 1.项目启动
@@ -46,3 +46,13 @@ minerva_hook.search('XpEYX59YnpCynqTbXo_wVQ~7xjOV1CnhTuQqC90y',false)
 
 现在反混淆还比较慢，如果需要关闭，可以注释src/components/pass/pass-manager.ts文件passes数组反混淆相关pass：
 ![](images/pdd_comment_pass.png)
+
+### 4.目标函数导出
+pdd这个样本，我们找到生成nano_fp的目标函数：_mmfunc2685_O，导出这个函数
+```
+minerva_hook.exportFunction('react_pdd','_mmfunc2685_O')
+```
+第一个参数react_pdd是文件名关键字，第二个参数是函数名。得到结果：
+![](images/pdd_export.png)
+可以看到，在结果代码里去掉了hook代码，同时自动补充了部分依赖变量。
+目前还是有部分依赖不能自动解决(浏览器环境、流程太复杂)，可以结合之前搜索到的scope结果，人工补一下。补完后这个函数就可以直接丢进类似python execjs这种vm直接运行了

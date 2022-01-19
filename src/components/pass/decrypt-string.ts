@@ -25,13 +25,13 @@ export class DecryptString implements Pass {
                         console.log(`find funcName fail, callee.type:${property.callee.type}`);
                         return;
                     }
-                    // if (funcName === '_mmfunc2300_e') {
-                    //     //$$func2131_e
-                    //     //$$func2338_e
-                    //     //待解决： O
-                    //     //fordeal:  $$func80
-                    //     debugger
-                    // }
+                    if (funcName === '_mmfunc2452_e') {
+                        //_mmfunc2452_e
+                        //_mmfunc1871_ne
+                        //待解决： O
+                        //fordeal:  $$func80
+                        debugger
+                    }
                     let funBinding = path.scope.getBinding(funcName);
                     if (!funBinding) {
                         console.log(`find func node fail, funcName:${funcName}`);
@@ -42,7 +42,7 @@ export class DecryptString implements Pass {
                         console.log(`error funcName: ${funcName}, no cfg`);
                         return;
                     }
-                    // if (funcName === 'q') {
+                    // if (funcName === '_mmfunc2452_e') {
                     //     //$$func2131_e
                     //     //_mmfunc2300_e
                     //     //q
@@ -95,12 +95,11 @@ export class DecryptString implements Pass {
                                         break;
                                     }
                                 }
+                                // let currentPath = path.find(x => x.node && x.node.extra && x.node.extra.flowNode);
                                 if (!currentPath) {
                                     console.log(`生成解密代码:${funcName}失败,寻找调用节点失败`);
                                     return;
                                 }
-                                // let currentPath = path.find(x => x.node && x.node.extra && x.node.extra.flowNode);;
-                                // for (let deep = 0; currentPath && deep < 3; deep++) {
                                 let flowNode = currentPath.node.extra.flowNode
                                 traverseFlow(flowNode, inActivity, currentPath, statements, funcName);
                                 // if (inActivity.size == 0) break;
@@ -194,7 +193,7 @@ function traverseFlow(flowNode, inActivity, path, statements, orifuncName) {
             }
             let otherFunPath = otherFunBinding.path;
             let otherInActivity = otherFunBinding.path.node.extra.cfg.flowGraph.entry.inActivity;
-            if ([...flowNode.uses].some(x => inActivity.has(x.name)) || [...otherInActivity].some(x=>inActivity.has(x))) {
+            if ([...flowNode.uses].some(x => inActivity.has(x.name)) || [...otherInActivity].some(x => inActivity.has(x))) {
                 statements.unshift(types.expressionStatement(flowNode.data));//插入调用
                 statements.unshift(otherFunPath.node);//插入函数定义
                 flowNode.uses.forEach(u => {

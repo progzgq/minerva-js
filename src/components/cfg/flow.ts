@@ -135,10 +135,10 @@ export interface ParsingContext {
 }
 
 export interface ParserOptions {
-  passes?: {
     removeTransitNodes?: boolean;
     rewriteConstantConditionalEdges?: boolean;
-  };
+    rewriteFunction?: boolean,
+    removeMinervaHook?:boolean
 }
 
 export interface Completion {

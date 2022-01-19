@@ -1,4 +1,4 @@
-const AnyProxy = require("anyproxy");
+import * as AnyProxy from "anyproxy";
 
 const options = {
     port: 10086,
@@ -12,8 +12,11 @@ const options = {
     wsIntercept: false, // 不开启websocket代理
     silent: false
 };
-const proxyServer = new AnyProxy.ProxyServer(options);
 
-proxyServer.on("ready", () => { /* */ });
-proxyServer.on("error", (e) => { /* */ });
-proxyServer.start();
+export function startProxySync() {
+    const proxyServer = new AnyProxy.ProxyServer(options);
+
+    proxyServer.on("ready", () => { /* */ });
+    proxyServer.on("error", (e) => { /* */ });
+    proxyServer.start();
+}

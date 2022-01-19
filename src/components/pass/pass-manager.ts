@@ -12,6 +12,11 @@ export interface Pass {
     passAst(ast): void
 }
 
+export interface PassResult {
+    ast: babel.ParseResult,
+    toCode(): string
+}
+
 const passes = [
     new CfgBuilder(),
     new CopyPropagation(),
@@ -19,10 +24,13 @@ const passes = [
     new Inject(),
 ]
 
-export function processJs(jsCode: string) {
+export function processJs(jsCode: string): PassResult {
     const ast = babel.parse(jsCode);
     for (let pass of passes) {
         pass.passAst(ast);
     }
-    return generator.default(ast).code;
+    return {
+        ast,
+        toCode: function () { return generator.default(this.ast).code }
+    };
 }

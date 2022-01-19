@@ -3,20 +3,23 @@ const shell = require("shelljs");
 const crypto = require("crypto");
 const cheerio = require("cheerio");
 
-const { loadPluginsAsStringWithCache } = require("./plugins-manager");
+import { loadPluginsAsStringWithCache } from "./plugins-manager";
 import { processJs } from "../pass/pass-manager";
+import * as functionExporter from './function-exporter';
+
+interface Meta {
+    url: string,
+    filepath: string,
+    astFilePath?: string,
+    cacheTime: number,
+}
 
 // 注入Hook成功的文件暂存到哪个目录下，因为注入实在是太慢了，落盘以应对频繁重启
 const injectSuccessJsFileCacheDirectory = "./js-file-cache";
 const injectSuccessJsFileCacheOriginDirectory = "./js-file-cache-origin";
 const injectSuccessJsFileCacheMetaFile = `${injectSuccessJsFileCacheDirectory}/meta.jsonl`
 
-// {
-//   "filepath": "",
-//   "url": "",
-//    "cacheTime": ""
-// }
-const injectSuccessJsFileCache = new Map();
+const injectSuccessJsFileCache = new Map<string, Meta>();
 
 const disableCache = false;
 
@@ -39,27 +42,6 @@ const disableCache = false;
     });
     console.log(`缓存文件已加载完毕，目前有缓存 ${injectSuccessJsFileCache.size}个`);
 })();
-
-function process(requestDetail, responseDetail) {
-    console.log("process");
-    if (isHtmlResponse(responseDetail)) {
-        try {
-            processHtmlResponse(requestDetail, responseDetail);
-        } catch (e) {
-            console.error(e);
-        }
-        return;
-    }
-
-    if (isJavaScriptResponse(responseDetail)) {
-        try {
-            processJavaScriptResponse(requestDetail, responseDetail);
-        } catch (e) {
-            console.error(e);
-        }
-        return;
-    }
-}
 
 // 判断是否是HTML类型的响应内容
 function isHtmlResponse(responseDetail) {
@@ -114,7 +96,7 @@ function processHtmlResponse(requestDetail, responseDetail) {
             return;
         }
 
-        let newJsCode = processJs(jsCode);
+        let newJsCode = processJs(jsCode).toCode();
         // 随着script替换时注入，不创建新的script标签
         if (!alreadyInjectHookContext) {
             newJsCode = loadPluginsAsStringWithCache() + newJsCode;
@@ -180,14 +162,16 @@ function processRealtime(responseDetail, url, body) {
     const md5 = crypto.createHash("md5");
     const md5Digest = md5.update(url).digest("hex");
     const cacheFilePath = injectSuccessJsFileCacheDirectory + "/" + md5Digest + ".js";
+    // const astCacheFilePath = injectSuccessJsFileCacheDirectory + "/" + md5Digest + ".json";
     const originFilePath = injectSuccessJsFileCacheOriginDirectory + "/" + md5Digest + ".js";
     if (!disableCache) {
         fs.writeFileSync(originFilePath, body);
     }
-    
-    let newJsCode = processJs(body);
+
+    let passResult = processJs(body);
+    let newJsCode = passResult.toCode();
     newJsCode = newJsCode.replace(/"use strict";/g, '');
-    
+
     const meta = {
         url,
         filepath: cacheFilePath,
@@ -219,4 +203,35 @@ function exists(path) {
     }
 }
 
-module.exports.process = process;
+export function process(requestDetail, responseDetail) {
+    console.log("process");
+    if (isHtmlResponse(responseDetail)) {
+        try {
+            processHtmlResponse(requestDetail, responseDetail);
+        } catch (e) {
+            console.error(e);
+        }
+        return;
+    }
+
+    if (isJavaScriptResponse(responseDetail)) {
+        try {
+            processJavaScriptResponse(requestDetail, responseDetail);
+        } catch (e) {
+            console.error(e);
+        }
+        return;
+    }
+}
+
+export function exportFunction(fileName: string, funcName: string): string {
+    for (let url of injectSuccessJsFileCache.keys()) {
+        if (url.includes(fileName)) {
+            const meta = injectSuccessJsFileCache.get(url);
+            let jscode = fs.readFileSync(meta.filepath).toString();
+            return functionExporter.exportFunction(jscode, funcName);
+        }
+    }
+    return `没有找到与: ${fileName} 匹配的文件`;
+
+}

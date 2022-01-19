@@ -2,7 +2,6 @@ import { Stack } from "../collections/stack";
 import IdGenerator from "../util/idGenerator";
 
 import { runOptimizationPasses } from "./passes/index";
-import * as AstPreprocessing from "./preprocessing/functionExpressionRewriter";
 import { parseStatements } from "./statements/statement";
 
 import * as ESTree from "../estree";
@@ -21,7 +20,7 @@ export { parse };
 function parse(program: ESTree.Program | ESTree.File, options: ParserOptions): ESTree.Program {
   let context = createParsingContext();
 
-  AstPreprocessing.rewriteFunctionExpressions(program);
+  // AstPreprocessing.rewriteFunctionExpressions(program);
   // const generator = require("@babel/generator");
   // console.log(generator.default(program,{}).code);
   let parsedProgram = parseProgram(program, context);
@@ -86,7 +85,7 @@ function createParsingContext(): ParsingContext {
 
     createNode(type = NodeType.Normal) {
       let id = nodeIdGenerator.generateId();
-      // if(id===12017) debugger;
+      // if(id===31239) debugger;
       return new FlowNode(id, type);
     },
 

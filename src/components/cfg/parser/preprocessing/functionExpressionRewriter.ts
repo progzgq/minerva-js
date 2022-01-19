@@ -4,29 +4,34 @@ import { createIdentifier } from "../../estreeFactory";
 import IdGenerator from "../../util/idGenerator";
 
 import * as babel from '@babel/core';
+import { ParserOptions } from "../../cfg";
 
-export { rewriteFunctionExpressions };
-
-interface RewrittenFunction {
-  name: string;
-  functionExpression: ESTree.FunctionExpression;
+export function removeMinervaHook(program: ESTree.Program | ESTree.File): void {
+  babel.traverse(program, {
+    FunctionDeclaration(path) {
+      path.node.body.body = path.node.body.body.filter(statement => {
+        return !((statement.type === 'VariableDeclaration' && statement.declarations.length == 1 && ESTree.isIdentifier(statement.declarations[0].id) && statement.declarations[0].id.name === 'minerva_scope_id')
+          || (statement.type === 'ExpressionStatement' && ESTree.isCallExpression(statement.expression) && statement.expression.callee.type === 'MemberExpression' && ESTree.isIdentifier(statement.expression.callee.object) && statement.expression.callee.object.name === 'minerva_hook'))
+      })
+    }
+  })
 }
 
-function rewriteFunctionExpressions(program: ESTree.Program | ESTree.File): void {
+export function rewriteFunctionExpressions(program: ESTree.Program | ESTree.File): void {
   let functionIdGenerator = IdGenerator.create();
-  let replaceTotal = 0;
-  let funTotal = 0;
   var rewriteFunctionVisitor = {
-    // FunctionDeclaration(path){
-    //   let funcId = functionIdGenerator.generateId();
-    //   let nameSuffix = path.node.id
-    //     ? "_" + path.node.id.name
-    //     : "";
-    //   let funcName = `_mmfunc${funcId}${nameSuffix}`;
-      
-    // },
+    FunctionDeclaration(path) {
+      if (!path.node.id || !path.node.id.name.includes('_mmfunc')) {
+        let funcId = functionIdGenerator.generateId();
+        let nameSuffix = path.node.id
+          ? "_" + path.node.id.name
+          : "";
+        let funcName = `_mmfunc${funcId}${nameSuffix}`;
+        let parentPath = path.findParent(x => x.scope.hasOwnBinding(path.node.id.name));
+        parentPath.scope.rename(path.node.id.name, funcName);
+      }
+    },
     FunctionExpression(path) {
-      funTotal += 1;
       let funcId = functionIdGenerator.generateId();
       let nameSuffix = path.node.id
         ? "_" + path.node.id.name
@@ -62,7 +67,6 @@ function rewriteFunctionExpressions(program: ESTree.Program | ESTree.File): void
         path.replaceWith(createIdentifier(funcName));
 
 
-        replaceTotal += 1;
       } catch (error) {
         console.log(`pass ${funcName} error:`);
         console.log(error.stack);
@@ -70,7 +74,6 @@ function rewriteFunctionExpressions(program: ESTree.Program | ESTree.File): void
     }
   };
   babel.traverse(program, rewriteFunctionVisitor);
-  console.log(`funTotal:${funTotal},replaceTotal:${replaceTotal}`);
 }
 
 function clone<T>(object: T): T {
