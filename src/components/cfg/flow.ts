@@ -44,6 +44,7 @@ export class FlowNode {
   outActivity: Set<string> = new Set();
   data: ESTree.Node;
   useDefChain: Record<string, DefUseNode[]> = {};
+  dead:boolean = false;
 
   constructor(id: number, type: NodeType) {
     this.id = id;
@@ -74,7 +75,7 @@ export class FlowNode {
     // if(this.id===5325){
     //   debugger;
     // }
-    if (edgeType === EdgeType.Normal || edgeType === EdgeType.AbruptCompletion) {
+    if (edgeData && (edgeType === EdgeType.Normal || edgeType === EdgeType.AbruptCompletion)) {
       this.data = edgeData;
       if (!edgeData.extra) {
         edgeData.extra = {};

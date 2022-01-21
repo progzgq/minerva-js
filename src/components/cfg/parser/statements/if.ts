@@ -100,10 +100,14 @@ function parseIfElseStatement(
 
   if (thenBranchCompletion.normal) {
     finalNode.appendEpsilonEdgeTo(thenBranchCompletion.normal);
+  }else if(thenBranchCompletion.data){
+    finalNode.appendEpsilonEdgeTo(thenBranchCompletion.data);
   }
 
   if (elseBranchCompletion.normal) {
     finalNode.appendEpsilonEdgeTo(elseBranchCompletion.normal);
+  }else if(elseBranchCompletion.data){
+    finalNode.appendEpsilonEdgeTo(elseBranchCompletion.data);
   }
 
   return { normal: finalNode };

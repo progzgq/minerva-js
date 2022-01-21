@@ -33,11 +33,10 @@ function parseReturnStatement(
   if (!finalizerCompletion.normal) {
     return finalizerCompletion;
   }
-  if (finalizerCompletion.normal.id === 1706) debugger;
   context.currentFlowGraph.successExit.appendTo(
     finalizerCompletion.normal,
     returnLabel,
-    returnStatement,
+    null,//returnStatement
     EdgeType.AbruptCompletion
   );
 

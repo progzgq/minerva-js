@@ -1,7 +1,7 @@
 import * as ESTree from "./estree";
 import { FlowProgram, ParserOptions } from "./flow";
 import * as Parser from "./parser/parser";
-import * as AstPreprocessing from "./parser/preprocessing/functionExpressionRewriter";
+import * as AstPreprocessing from "./parser/preprocessing/functionRewriter";
 
 export { parse };
 export * from "./flow";

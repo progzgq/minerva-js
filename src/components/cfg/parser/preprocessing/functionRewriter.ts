@@ -20,27 +20,12 @@ export function removeMinervaHook(program: ESTree.Program | ESTree.File): void {
 export function rewriteFunctionExpressions(program: ESTree.Program | ESTree.File): void {
   let functionIdGenerator = IdGenerator.create();
   var rewriteFunctionVisitor = {
-    FunctionDeclaration(path) {
-      if (!path.node.id || !path.node.id.name.includes('_mmfunc')) {
-        let funcId = functionIdGenerator.generateId();
-        let nameSuffix = path.node.id
-          ? "_" + path.node.id.name
-          : "";
-        let funcName = `_mmfunc${funcId}${nameSuffix}`;
-        let parentPath = path.findParent(x => x.scope.hasOwnBinding(path.node.id.name));
-        parentPath.scope.rename(path.node.id.name, funcName);
-      }
-    },
     FunctionExpression(path) {
       let funcId = functionIdGenerator.generateId();
       let nameSuffix = path.node.id
         ? "_" + path.node.id.name
         : "";
       let funcName = `_mmfunc${funcId}${nameSuffix}`;
-      // if (path.toString().indexOf('WRbNW7BcVSouvHW') > 1) {
-      //   console.log(`funcName:${funcName}`);
-      //   debugger;
-      // }
       if (path.node.id && path.node.id.name) {
         let binding = path.scope.getBinding(path.node.id.name);
         if (binding && binding.referencePaths) {
@@ -73,6 +58,19 @@ export function rewriteFunctionExpressions(program: ESTree.Program | ESTree.File
       }
     }
   };
+  babel.traverse(program, {
+    FunctionDeclaration(path) {
+      if (!path.node.id || !path.node.id.name.includes('_mmfunc')) {
+        let funcId = functionIdGenerator.generateId();
+        let nameSuffix = path.node.id
+          ? "_" + path.node.id.name
+          : "";
+        let funcName = `_mmfunc${funcId}${nameSuffix}`;
+        let parentPath = path.findParent(x => x.scope.hasOwnBinding(path.node.id.name));
+        parentPath.scope.rename(path.node.id.name, funcName);
+      }
+    }
+  })
   babel.traverse(program, rewriteFunctionVisitor);
 }
 

@@ -8,7 +8,7 @@ import { CopyPropagation } from "../pass/copy-propagation";
 
 const passes = [
     new CfgBuilder(false, true),
-    new CopyPropagation(),
+    new CopyPropagation({ removeDeadCode: true, round: 2 }),
 ]
 
 export function exportFunction(jsCode: string, funcName: string): string {
@@ -45,7 +45,7 @@ function generate(funPath) {
                     let xbind = x.scope.getBinding(ix);
                     if (xbind.referencePaths.every(r => r.isDescendant(funPath))) {
                         //某个变量所有引用都是调用函数内部时，直接加入这个变量
-                        if (xbind.path.node.extra && xbind.path.node.extra.flowNode) {
+                        if (xbind.path.node.extra && xbind.path.node.extra.flowNode && xbind.path.node.extra.flowNode.uses.size === 0) {
                             statements.unshift(node2Statement(xbind.path.node.extra.flowNode));
                             inActivity.delete(ix);
                         }
@@ -71,7 +71,7 @@ function generate(funPath) {
             types.identifier(funcName),
             params
         )));
-    let wrapFunction = types.functionDeclaration(types.identifier(`_wrap_${funcName}`), [], types.blockStatement(statements));
+    let wrapFunction = types.functionDeclaration(types.identifier(`_wrap_${funcName}`), params, types.blockStatement(statements));
     if (inActivity.size > 0) {
         [...inActivity].forEach(x => {
             types.addComment(wrapFunction, 'inner', `依赖没解决:${x}`);
@@ -88,7 +88,6 @@ function traverseFlow(flowNode, inActivity, path, statements, orifuncName) {
         if (!flowNode.data) {
             continue;
         }
-        let need = false;
         var callExp = getCallExpression(flowNode.data);
         if (callExp && types.isIdentifier(callExp.callee)) {
             //TODO 可能是这种形式：document[O(119)](O(122))
@@ -109,7 +108,7 @@ function traverseFlow(flowNode, inActivity, path, statements, orifuncName) {
                         return;
                     }
                     inActivity.add(u.name);//函数调用使用的变量也加入依赖
-                    otherInActivity.forEach(x => x !== orifuncName ? inActivity.add(x) : null);
+                    otherInActivity.forEach(x => x !== orifuncName ? inActivity.add(x.name) : null);
                 })
             } else if (otherInActivity && otherInActivity.size > 0) {
                 // inActivity = new Set([...inActivity, ...otherInActivity]);
@@ -122,7 +121,6 @@ function traverseFlow(flowNode, inActivity, path, statements, orifuncName) {
                                 if (defUse.brother && defUse.name === x && inActivity.has(defUse.brother.name)) {
                                     //函数内部用到了相关变量，保险起见，认为这个函数是需要的 
                                     inActivity.add(defUse.name);
-                                    need = true;
                                     statements.unshift(types.expressionStatement(flowNode.data));//插入调用
                                     statements.unshift(otherFunPath.node);//插入函数定义
                                     flowNode.uses.forEach(u => {
@@ -138,13 +136,18 @@ function traverseFlow(flowNode, inActivity, path, statements, orifuncName) {
                 })
             }
         } else {
+            let finded = false;
             flowNode.defs.forEach(x => {
                 if (inActivity.has(x.name)) {
                     //找到一个变量def
                     inActivity.delete(x.name);
                     statements.unshift(node2Statement(flowNode));
+                    finded = true;
                 }
             });
+            if (finded) {
+                flowNode.uses.forEach(x => inActivity.add(x.name));
+            }
         }
     }
 }

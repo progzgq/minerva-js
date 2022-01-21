@@ -68,7 +68,7 @@ export class DecryptString implements Pass {
                                         let xbind = x.scope.getBinding(ix);
                                         if (xbind.referencePaths.every(r => r.isDescendant(funPath))) {
                                             //某个变量所有引用都是调用函数内部时，直接加入这个变量
-                                            if (xbind.path.node.extra && xbind.path.node.extra.flowNode) {
+                                            if (xbind.path.node.extra && xbind.path.node.extra.flowNode && xbind.path.node.extra.flowNode.uses.size === 0) {
                                                 statements.unshift(node2Statement(xbind.path.node.extra.flowNode));
                                                 inActivity.delete(ix);
                                             }
@@ -230,13 +230,18 @@ function traverseFlow(flowNode, inActivity, path, statements, orifuncName) {
                 })
             }
         } else {
+            let finded = false;
             flowNode.defs.forEach(x => {
                 if (inActivity.has(x.name)) {
                     //找到一个变量def
                     inActivity.delete(x.name);
                     statements.unshift(node2Statement(flowNode));
+                    finded = true;
                 }
             });
+            if (finded) {
+                flowNode.uses.forEach(x => inActivity.add(x.name));
+            }
         }
         // if (flowNode.incomingEdges && flowNode.incomingEdges.length == 1) {
         //     //暂时只处理单前驱情况

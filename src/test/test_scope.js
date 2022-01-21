@@ -27,4 +27,4 @@ new DecryptString().passAst(ast);
 //     }
 // })
 fs.writeFileSync(`${__dirname}/new${fileName}`, generator.default(ast).code);
-fs.writeFileSync(`${__dirname}/new${fileName}.json`, JSON.stringify(ast));
+// fs.writeFileSync(`${__dirname}/new${fileName}.json`, JSON.stringify(ast));
