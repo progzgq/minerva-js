@@ -38,7 +38,7 @@ if (!window.minerva_hook) {
             if (!f) {
                 return;
             }
-            let scope_id = `${funcName}_${new Date().getTime()}_${Math.random()}`;
+            let scope_id = `${funcName}_${window.minerva_idGenerate()}`;
             f.minerva_scope_id = scope_id;
             var cScope = {
                 f: f,
@@ -97,6 +97,12 @@ if (!window.minerva_hook) {
             console.log(code);
         },
     }
+    window.minerva_idGenerate = (function () {
+        var id = 0;
+        return function () {
+            return id++;
+        }
+    })();
 }
 
 function getCodeLocation() {

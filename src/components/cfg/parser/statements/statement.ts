@@ -88,7 +88,7 @@ function parseStatement(
     return parsingMethod(statement, currentNode, context);
   } catch (err) {
     debugger;
-    console.trace(`parse statement error`);
+    console.trace(`parse statement error ${err}`);
   } finally {
     context.statements.pop();
   }

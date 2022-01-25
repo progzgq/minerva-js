@@ -204,7 +204,7 @@ function exists(path) {
 }
 
 export function process(requestDetail, responseDetail) {
-    console.log("process");
+    console.log("process content");
     if (isHtmlResponse(responseDetail)) {
         try {
             processHtmlResponse(requestDetail, responseDetail);
