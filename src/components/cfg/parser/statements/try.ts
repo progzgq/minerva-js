@@ -68,9 +68,11 @@ function parseTryStatement(
     handlerBodyEntry.appendEpsilonEdgeTo(tryBlockEntry);//TODO 异常节点的前驱可能是tyeBlock内所有节点？
   }
 
+  context.ambiguity = true;
   let handlerBodyCompletion = handler
     ? parseBlockStatement(handler.body, handlerBodyEntry, context)
     : null;
+  context.ambiguity = false;
 
   context.enclosingStatements.pop();
 

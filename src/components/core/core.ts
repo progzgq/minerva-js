@@ -133,9 +133,9 @@ function processJavaScriptResponse(requestDetail, responseDetail) {
     // 这样粗暴地搞可能会有问题，比如淘宝那种贼恶心的模块加载方式
     // const url = requestDetail.url.split("?")[0];
     const url = requestDetail.url;
-    const body = responseDetail.response.body.toString();
 
-    if (isNeedIgnoreHook(body)) {
+    const body = responseDetail.response.body.toString();
+    if (isNeedIgnoreHook(url, body, requestDetail)) {
         return;
     }
 
@@ -148,8 +148,8 @@ function processJavaScriptResponse(requestDetail, responseDetail) {
     }
 }
 
-function isNeedIgnoreHook(body) {
-    return body.startsWith("{");
+function isNeedIgnoreHook(url: string, body, requestDetail) {
+    return body.startsWith("{") || url.indexOf('firebaseio.com') > 0 || url.indexOf('h/b/flow') > 0
 }
 
 function processFromCache(responseDetail, url, body) {
@@ -204,23 +204,35 @@ function exists(path) {
 }
 
 export function process(requestDetail, responseDetail) {
-    console.log("process content");
-    if (isHtmlResponse(responseDetail)) {
-        try {
-            processHtmlResponse(requestDetail, responseDetail);
-        } catch (e) {
-            console.error(e);
+    console.log("process content:" + requestDetail.url);
+    // if (requestDetail.url.indexOf("static.pddpic.com") < 0) {
+    //     return;
+    // }
+    // let pp = false;
+    // if (requestDetail.url.indexOf('orchestrate') > 0) {
+    //     pp = true
+    //     console.log('find orchestrate')
+    // }
+    try {
+        if (isHtmlResponse(responseDetail)) {
+            try {
+                processHtmlResponse(requestDetail, responseDetail);
+            } catch (e) {
+                console.error(e);
+            }
+            return;
         }
-        return;
-    }
 
-    if (isJavaScriptResponse(responseDetail)) {
-        try {
-            processJavaScriptResponse(requestDetail, responseDetail);
-        } catch (e) {
-            console.error(e);
+        if (isJavaScriptResponse(responseDetail)) {
+            try {
+                processJavaScriptResponse(requestDetail, responseDetail);
+            } catch (e) {
+                console.error(e);
+            }
+            return;
         }
-        return;
+    } catch (err) {
+        console.error(err)
     }
 }
 

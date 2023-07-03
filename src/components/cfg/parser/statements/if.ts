@@ -78,11 +78,13 @@ function parseIfElseStatement(
   let thenNode = context
     .createNode()
     .appendConditionallyTo(testNode, thenLabel, ifStatement.test);
+  context.ambiguity=true;
   let thenBranchCompletion = parseStatement(
     ifStatement.consequent,
     thenNode,
     context
   );
+  context.ambiguity=false;
 
   // Else branch
   let negatedTest = negateTruthiness(ifStatement.test);

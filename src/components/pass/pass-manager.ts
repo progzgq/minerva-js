@@ -19,13 +19,13 @@ export interface PassResult {
 
 const passes = [
     new CfgBuilder(),
-    new CopyPropagation(),
-    new DecryptString(),
+    // new CopyPropagation(),
+    // new DecryptString(),
     new Inject(),
 ]
 
 export function processJs(jsCode: string): PassResult {
-    const ast = babel.parse(jsCode);
+    const ast = babel.parse(jsCode,{'sourceType':'script'});
     for (let pass of passes) {
         pass.passAst(ast);
     }

@@ -44,13 +44,15 @@ export class FlowNode {
   outActivity: Set<string> = new Set();
   data: ESTree.Node;
   useDefChain: Record<string, DefUseNode[]> = {};
-  dead:boolean = false;
+  dead: boolean = false;
+  ambiguity: boolean = false;
 
-  constructor(id: number, type: NodeType) {
+  constructor(id: number, type: NodeType, ambiguity: boolean = false) {
     this.id = id;
     this.type = type;
     this.incomingEdges = [];
     this.outgoingEdges = [];
+    this.ambiguity = ambiguity;
   }
 
   insertDefUses(defs: Set<DefUseNode>, uses: Set<DefUseNode>) {
@@ -81,7 +83,7 @@ export class FlowNode {
         edgeData.extra = {};
       }
       edgeData.extra.flowNode = this;
-      this.insertDefUses(...get_def_uses(edgeData));
+      this.insertDefUses(...get_def_uses(edgeData, this.ambiguity));
     }
     // this.data = edgeData;
 
@@ -133,13 +135,14 @@ export interface ParsingContext {
   statements: Stack<ESTree.Statement>;
   appendDef(name: string): void;
   appendUse(name: string): void;
+  ambiguity: boolean;
 }
 
 export interface ParserOptions {
-    removeTransitNodes?: boolean;
-    rewriteConstantConditionalEdges?: boolean;
-    rewriteFunction?: boolean,
-    removeMinervaHook?:boolean
+  removeTransitNodes?: boolean;
+  rewriteConstantConditionalEdges?: boolean;
+  rewriteFunction?: boolean,
+  removeMinervaHook?: boolean
 }
 
 export interface Completion {

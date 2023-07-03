@@ -119,3 +119,5 @@ dist
 
 js-file-cache*
 *.DS_Store
+test
+.vscode

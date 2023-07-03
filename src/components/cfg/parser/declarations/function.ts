@@ -58,6 +58,7 @@ function parseFunctionDeclaration(
     statements: Stack.create<ESTree.Statement>(),
     appendDef: context.appendDef,
     appendUse: context.appendUse,
+    ambiguity: context.ambiguity,
   };
 
   let endOfParamAssignments = explicitlyAssignParameterValues(

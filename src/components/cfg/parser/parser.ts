@@ -85,8 +85,8 @@ function createParsingContext(): ParsingContext {
 
     createNode(type = NodeType.Normal) {
       let id = nodeIdGenerator.generateId();
-      // if(id===15866) debugger;
-      return new FlowNode(id, type);
+      // if(id===16834) debugger;
+      return new FlowNode(id, type,this.ambiguity);
     },
 
     createFunctionId() {
@@ -105,5 +105,6 @@ function createParsingContext(): ParsingContext {
       let currentStatement = this.statements.peek();
       (currentStatement.extra.uses as Set<string>).add(name);
     },
+    ambiguity : false,
   };
 }

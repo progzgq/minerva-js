@@ -43,8 +43,8 @@ function parseForStatement(
     // // Create edges labels
     // let truthyConditionLabel = stringify(truthyCondition);
     // let falsyConditionLabel = stringify(falsyCondition);
-    
-    let testFinishNode = parseExpression(forStatement.test,testDecisionNode,context);
+
+    let testFinishNode = parseExpression(forStatement.test, testDecisionNode, context);
 
     // Add truthy and falsy edges
     beginOfLoopBodyNode.appendConditionallyTo(
@@ -103,6 +103,9 @@ function parseForStatement(
     }
   } else if (loopBodyCompletion.break) {
     updateNode.appendEpsilonEdgeTo(loopBodyCompletion.data);
+  } else if (loopBodyCompletion.return) {
+    updateNode.appendEpsilonEdgeTo(loopBodyCompletion.data);//TODO 实际是到不了update的
+    finalNode.appendEpsilonEdgeTo(loopBodyCompletion.data);
   }
 
   return { normal: finalNode };

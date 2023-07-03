@@ -44,7 +44,7 @@ minerva_hook.search('XpEYX59YnpCynqTbXo_wVQ~7xjOV1CnhTuQqC90y',false)
 默认情况代码已经自动反混淆了，pdd样本对比：
 ![](images/pdd_deobf.png)
 
-现在反混淆还比较慢，如果需要关闭，可以注释src/components/pass/pass-manager.ts文件passes数组反混淆相关pass：
+现在反混淆还比较慢，也不能兼容所有网站，如果需要关闭，可以注释src/components/pass/pass-manager.ts文件passes数组反混淆相关pass：
 ![](images/pdd_comment_pass.png)
 
 ### 4.目标函数导出

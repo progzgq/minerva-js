@@ -117,6 +117,7 @@ export class CopyPropagation implements Pass {
                         if (defReachs.length === 1 && defReachs[0].brother && !defReachs[0].ambiguity) {
                             //有且只有1个定值到达,且不是模糊定值
                             let brotherName = defReachs[0].brother.name;
+                            if(brotherName==='arguments') return;
                             let min = idSeq.getSeq(reachIds[0]);
                             let max = idSeq.getSeq(edge.target.id);
                             let hasBrotherDef = [...(defName2Id[brotherName] || [])].some(id => {
@@ -333,7 +334,7 @@ export class CopyPropagation implements Pass {
             if (path.node.extra && path.node.extra.cfg && !path.node.extra.minerva_cp) {
                 for (let i = 0; i < options.round; i++) {
                     let entry: FlowNode = path.node.extra.cfg['flowGraph']['entry'];
-                    // if ('id' in path.node && 'name' in path.node.id && path.node.id.name === '_mmfunc1301') {
+                    // if ('id' in path.node && 'name' in path.node.id && path.node.id.name === '_mmfunc288') {
                     //     debugger;
                     // }
                     let start = new Date().getTime();

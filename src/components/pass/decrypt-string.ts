@@ -38,11 +38,14 @@ export class DecryptString implements Pass {
                     }
                     console.log(`find funcName: ${funcName}`);
                     let funPath = funBinding.path;
-                    if (!funPath.node.extra.cfg) {
+                    // if(!funPath.node.extra){
+                    //     debugger
+                    // }
+                    if (!funPath.node.extra || !funPath.node.extra.cfg) {
                         console.log(`error funcName: ${funcName}, no cfg`);
                         return;
                     }
-                    // if (funcName === '_mmfunc2452_e') {
+                    // if (funcName === '_mmfunc63') {
                     //     //$$func2131_e
                     //     //_mmfunc2300_e
                     //     //q
@@ -88,7 +91,9 @@ export class DecryptString implements Pass {
                                 }
                                 let currentPath = null;
                                 for (let crPath of parentFunPath.scope.getBinding(funcName).referencePaths) {
-                                    if (crPath.parent.type == 'CallExpression' && crPath.isDescendant(parentFunPath) && crPath.scope.hasOwnBinding(funcName) && ([...inActivity].some(ix => crPath.scope.hasOwnBinding(ix)))) {
+                                    if (crPath.parent.type == 'CallExpression' && crPath.isDescendant(parentFunPath) 
+                                        && crPath.scope.hasOwnBinding(funcName) 
+                                        && ([...inActivity].some(ix => crPath.scope.hasOwnBinding(ix)))) {
                                         //找到第一个调用处
                                         //TODO 后面调用时是否已改变依赖?
                                         currentPath = crPath.find(x => x.node && x.node.extra && x.node.extra.flowNode);
@@ -140,7 +145,7 @@ export class DecryptString implements Pass {
                             )));
                         // let funDeclaration = types.functionDeclaration(types.identifier(`_minerva_${funcName}`), params, types.blockStatement(statements));
                         let func = getCompiledFunction(statements, params.map(p => p.name));
-                        console.log(`生成解密代码成功,${funcName}\n${func.toString}`);
+                        console.log(`生成解密代码成功,${funcName}\n${func.toString()}`);
                         for (let old_path of funBinding.referencePaths) {
                             if (old_path.parent.type == 'CallExpression') {
                                 let exeParams = [];

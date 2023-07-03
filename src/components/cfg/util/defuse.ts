@@ -139,6 +139,17 @@ export function get_def_uses(node: ESTree.Node, ambiguity = false): [Set<DefUseN
             }
             break;
         }
+        case 'NewExpression':{
+            for (let argument of node.arguments) {
+                if (ESTree.isIdentifier(argument)) {
+                    // uses.add(DefUseNode.create(argument, null));
+                    appendUses(uses, DefUseNode.create(argument, null));
+                } else {
+                    appendDefuses(argument, ambiguity);
+                }
+            }
+            break;
+        }
         case 'UpdateExpression': {
             //a++
             if (ESTree.isIdentifier(node.argument)) {

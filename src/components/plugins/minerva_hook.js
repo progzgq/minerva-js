@@ -42,7 +42,7 @@ if (!window.minerva_hook) {
             f.minerva_scope_id = scope_id;
             var cScope = {
                 f: f,
-                codeLocation: getCodeLocation(),
+                codeLocation: '',//getCodeLocation(),
                 scope_id: scope_id,
                 params: params,
                 f_arguments: f_arguments,
@@ -69,8 +69,9 @@ if (!window.minerva_hook) {
             }
             let f_scope = this.scope_db[minerva_scope_id];
             if (!f_scope) { return; }
-            f_scope.scope = {};
-            Object.assign(f_scope.scope, scope);
+            // f_scope.scope = {};
+            // Object.assign(f_scope.scope, scope);
+            f_scope.scope = scope
             this.scope_stack.pop();
         },
         search: function (pattern, firstOnly = true, isEquals = false, isNeedExpansion = false) {

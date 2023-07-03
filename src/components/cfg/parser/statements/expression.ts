@@ -1,7 +1,7 @@
 import { stringify } from "../expressions/stringifier";
 
 import * as ESTree from "../../estree";
-import { Completion, FlowNode, ParsingContext } from "../../flow";
+import { Completion, EdgeType, FlowNode, ParsingContext } from "../../flow";
 
 export { parseExpression, parseExpressionStatement };
 
